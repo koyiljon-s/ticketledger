@@ -17,7 +17,7 @@ export function Footer() {
 
       <div className="mx-auto grid max-w-384 gap-10 px-5 py-12 md:grid-cols-[1.5fr_1fr_1.5fr]">
         <div>
-          <Link href="/" className="text-3xl font-bold text-white">
+          <Link href="/" className="text-3xl font-bold italic text-white">
             {BRAND}
           </Link>
           <p className="mt-3 max-w-sm text-base">

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SearchBar } from "./ui/search-bar";
 
-export const BRAND = "BC Tickets";
+export const BRAND = "TicketLedger";
 
 /**
  * The 5 main sections. `segment` / `classification` are the matching
@@ -20,7 +20,7 @@ export function Navbar() {
     <header className="bg-[#024bde] text-white">
       {/* Top row: logo · sections · My Tickets */}
       <div className="mx-auto flex max-w-384 items-center justify-between gap-6 px-5 py-4">
-        <h1 className="text-2xl  font-bold">
+        <h1 className="text-2xl font-bold italic">
           <Link href="/">{BRAND}</Link>
         </h1>
 

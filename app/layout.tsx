@@ -28,7 +28,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BC App",
+  title: "TicketLedger",
   description: "Blockchain app for entertainment — case study",
 };
 
