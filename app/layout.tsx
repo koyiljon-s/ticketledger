@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
+import { Footer } from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
 import "./globals.css";
 
 // Avenir ships as Light/Book/Heavy/Black only (no Medium/Roman). Heavy is registered
@@ -33,8 +35,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${avenir.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className={`${avenir.className} min-h-full`}>
-        {children}
+      <body className={`${avenir.className} flex min-h-full flex-col`}>
+        <Navbar />
+        <div className="flex-1">{children}</div>
+        <Footer />
       </body>
     </html>
   );
