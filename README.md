@@ -21,9 +21,20 @@ npm run dev
 
 No wallet, testnet or crypto is needed. The whole blockchain runs inside your browser tab and is saved to `localStorage`. Use **Reset demo** in the Block Explorer to start over.
 
+### Optional: import real events from Ticketmaster
+
+1. Create a free account at [developer.ticketmaster.com](https://developer.ticketmaster.com/) and copy your **Consumer Key**.
+2. `cp .env.example .env.local` and set `TICKETMASTER_API_KEY=...`
+3. Restart `npm run dev`, switch to **Aurora Live** → **Organizer** → search → **Import** → **Mint on StageChain**.
+
+The key is used only on the server (`app/api/ticketmaster/events/route.ts` → `lib/ticketmaster.ts`) and never reaches the browser. Results are cached for about 1 hour. The default quota is 5,000 calls/day at 5 requests/second. Without a key, everything else still works and organizers can create events manually.
+
+> **Design note:** the UI borrows common ticketing UX *patterns* (search-first header, category tabs, date-block event rows, event page with ticket selector, mobile-ticket cards). Ticketmaster's API terms forbid apps that replicate or replace the Ticketmaster.com experience, and the API data is owned by Ticketmaster and/or organizers, so StageChain keeps its own brand, links back to the original event, and shows an attribution and data-use notice in the footer.
+
 ## Guided demo (≈5 min, good for a presentation)
 
-1. **Buy**: act as *Alice* (wallet switcher, top-right) → **Events** → *Buy ticket*. The transaction goes to the mempool and then gets mined into a block.
+0. **Import** (optional): as *Aurora Live* → **Organizer**, import a real Ticketmaster event and set its resale cap and royalty.
+1. **Buy**: act as *Alice* (wallet switcher, top-right) → open an event → choose a quantity → *Buy*. The transaction goes to the mempool and then gets mined into a block.
 2. **Scalping attempt**: switch to *Sam the Scalper*, buy a ticket, then **My Tickets** → "Try scalping at 5×" → *List*. The contract reverts with the anti-scalping rule.
 3. **Fair resale**: list a ticket at or below the cap, switch to *Bob* → **Resale Market** → *Buy*. The organizer receives the royalty, which shows under "Earned".
 4. **Gate**: switch to *Aurora Live* → **Gate Check-in** → verify and admit. Scan the same ticket again (denied: already used). Try `EVT-1#999` (denied: counterfeit) or the wrong presenting wallet (denied: not the owner).
@@ -39,7 +50,10 @@ lib/chain/
   accounts.ts     Demo wallets
 components/
   chain-provider.tsx  The "node": mempool, mining, replay → world state, persistence
-  views/*             Events, Resale Market, Wallet, Gate, Explorer UIs
+  event-parts.tsx     Shared event row / tile / badges
+  views/*             Home, Events, Event detail, Organizer (import), Resale, My Tickets, Gate, Explorer, How it works
+lib/ticketmaster.ts   Server-only Discovery API client (normalizes + caches results)
+app/api/ticketmaster/events/route.ts   Proxy route so the API key stays on the server
 contracts/
   StageTicket.sol     The same rules written as a Solidity (EVM) contract, for reference
 ```
