@@ -64,6 +64,10 @@ export function applyTx(state: WorldState, tx: Tx, ctx: TxContext): WorldState {
       require(Number.isInteger(p.supply) && p.supply > 0 && p.supply <= 500, "Supply must be 1–500");
       require(p.royaltyBps >= 0 && p.royaltyBps <= 2_500, "Royalty must be 0–25%");
       require(p.maxMarkupBps >= 0 && p.maxMarkupBps <= 10_000, "Max markup must be 0–100%");
+      if (p.source) {
+        const dup = Object.values(s.events).find((e) => e.source?.provider === p.source!.provider && e.source.id === p.source!.id);
+        require(!dup, `This ${p.source.provider} event was already imported as ${dup?.id}`);
+      }
       s.eventCount += 1;
       const id = `EVT-${s.eventCount}`;
       s.events[id] = {

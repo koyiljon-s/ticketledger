@@ -22,6 +22,10 @@ export type TxPayloads = {
     royaltyBps: number;
     /** Max resale markup over face value, in basis points (1000 = +10%). */
     maxMarkupBps: number;
+    /** Optional banner image (e.g. from an imported Ticketmaster event). */
+    imageUrl?: string;
+    /** Where the event metadata came from, if imported from an external API. */
+    source?: EventSource;
   };
   BUY_TICKET: { eventId: string };
   LIST_TICKET: { ticketId: string; price: number };
@@ -53,6 +57,8 @@ export type Block = {
   hash: string;
 };
 
+export type EventSource = { provider: "ticketmaster"; id: string; url: string };
+
 export type EventCategory = "Concert" | "Festival" | "Sports" | "Theatre" | "eSports" | "Film";
 
 export type ShowEvent = {
@@ -69,6 +75,8 @@ export type ShowEvent = {
   maxMarkupBps: number;
   royaltiesEarned: number;
   primaryRevenue: number;
+  imageUrl?: string;
+  source?: EventSource;
 };
 
 export type TicketHistoryEntry = {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { DIFFICULTY } from "@/lib/chain/blockchain";
 import type { Block, Tx } from "@/lib/chain/types";
 import { useChain } from "../chain-provider";
+import { Container } from "../event-parts";
 import { Badge, Button, Card, Hash, PageHeader, Who } from "../ui";
 
 export function ExplorerView() {
@@ -14,14 +15,14 @@ export function ExplorerView() {
   const block = chain[idx];
 
   return (
-    <>
+    <Container>
       <PageHeader
         title="Block Explorer"
         subtitle={`Each block stores the SHA-256 hash of the previous block, so editing any past block breaks every block after it. Mining means finding a nonce that makes the block hash start with ${DIFFICULTY} zeros (proof-of-work).`}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-sm text-zinc-300">
-            <input type="checkbox" checked={autoMine} onChange={(e) => setAutoMine(e.target.checked)} className="accent-fuchsia-500" />
+          <label className="flex items-center gap-2 text-sm text-zinc-700">
+            <input type="checkbox" checked={autoMine} onChange={(e) => setAutoMine(e.target.checked)} className="accent-violet-600" />
             Auto-mine
           </label>
           <Button disabled={mining.active || mempool.length === 0} onClick={() => void mine()}>
@@ -40,17 +41,17 @@ export function ExplorerView() {
 
       <div className="mb-6 grid gap-4 md:grid-cols-4">
         <Stat label="Chain status">
-          {validity?.valid === false ? <span className="text-rose-300">❌ Invalid at #{validity.firstBad}</span> : <span className="text-emerald-300">✅ Valid</span>}
+          {validity?.valid === false ? <span className="text-rose-700">❌ Invalid at #{validity.firstBad}</span> : <span className="text-emerald-700">✅ Valid</span>}
         </Stat>
         <Stat label="Height">{chain.length - 1}</Stat>
         <Stat label="Mempool">{mempool.length} pending tx</Stat>
         <Stat label="Miner">
           {mining.active ? (
-            <span className="font-mono text-sm text-fuchsia-300">
+            <span className="font-mono text-sm text-violet-700">
               nonce {mining.nonce.toLocaleString()} · {mining.hash.slice(0, 10)}…
             </span>
           ) : (
-            <span className="text-zinc-400">idle</span>
+            <span className="text-zinc-600">idle</span>
           )}
         </Stat>
       </div>
@@ -66,26 +67,26 @@ export function ExplorerView() {
               <button
                 onClick={() => setSelected(i === chain.length - 1 ? null : i)}
                 className={`w-40 shrink-0 rounded-xl border p-3 text-left text-xs transition ${
-                  bad ? "border-rose-500/60 bg-rose-500/10" : "border-white/10 bg-white/[0.03]"
-                } ${block?.index === b.index ? "ring-2 ring-fuchsia-400" : ""}`}
+                  bad ? "border-rose-400 bg-rose-50" : "border-zinc-200 bg-white"
+                } ${block?.index === b.index ? "ring-2 ring-violet-500" : ""}`}
               >
                 <div className="flex justify-between font-semibold">
                   <span>Block #{b.index}</span>
                   <span>{bad ? "❌" : "✅"}</span>
                 </div>
                 <div className="mt-1 text-zinc-500">{b.txs.length} tx</div>
-                <div className="mt-1 truncate font-mono text-[10px] text-zinc-400">{b.hash.slice(0, 18)}…</div>
+                <div className="mt-1 truncate font-mono text-[10px] text-zinc-600">{b.hash.slice(0, 18)}…</div>
               </button>
             </div>
           );
         })}
         {mempool.length > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-zinc-600">⟶</span>
-            <div className="w-40 shrink-0 rounded-xl border border-dashed border-amber-400/40 p-3 text-xs text-amber-200">
+            <span className="text-zinc-400">⟶</span>
+            <div className="w-40 shrink-0 rounded-xl border border-dashed border-amber-400 p-3 text-xs text-amber-800">
               <div className="font-semibold">Mempool</div>
               <div className="mt-1">{mempool.length} pending tx</div>
-              <div className="mt-1 text-[10px] text-amber-200/60">{mining.active ? "mining…" : "waiting for miner"}</div>
+              <div className="mt-1 text-[10px] text-amber-700/70">{mining.active ? "mining…" : "waiting for miner"}</div>
             </div>
           </div>
         )}
@@ -94,8 +95,8 @@ export function ExplorerView() {
       {block && <BlockDetail key={`${block.index}-${block.hash}`} block={block} i={idx} />}
 
       <details className="mt-8">
-        <summary className="cursor-pointer text-sm text-zinc-400">World state (derived by replaying all transactions)</summary>
-        <pre className="mt-3 max-h-[30rem] overflow-auto rounded-xl border border-white/10 bg-black/40 p-4 text-[11px] text-zinc-300">
+        <summary className="cursor-pointer text-sm text-zinc-600">World state (derived by replaying all transactions)</summary>
+        <pre className="mt-3 max-h-[30rem] overflow-auto rounded-xl border border-zinc-200 bg-white p-4 text-[11px] text-zinc-700">
           {JSON.stringify(
             {
               balances: pendingState.balances,
@@ -109,7 +110,7 @@ export function ExplorerView() {
           )}
         </pre>
       </details>
-    </>
+    </Container>
   );
 }
 
@@ -142,18 +143,18 @@ function BlockDetail({ block, i }: { block: Block; i: number }) {
           <Row k="Difficulty">{block.difficulty} leading zeros</Row>
           <Row k="Stored hash" ok={check?.hashOk && check?.powOk}>
             <code className="break-all font-mono text-xs">
-              <span className="text-fuchsia-300">{block.hash.slice(0, block.difficulty)}</span>
+              <span className="text-violet-700">{block.hash.slice(0, block.difficulty)}</span>
               {block.hash.slice(block.difficulty)}
             </code>
           </Row>
           {check && !check.hashOk && (
             <Row k="Recomputed hash" ok={false}>
-              <code className="break-all font-mono text-xs text-rose-300">{check.recomputed}</code>
+              <code className="break-all font-mono text-xs text-rose-700">{check.recomputed}</code>
             </Row>
           )}
         </dl>
         {check && !(check.hashOk && check.powOk && check.linkOk) && (
-          <div className="mt-5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
+          <div className="mt-5 rounded-lg border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800">
             {!check.hashOk && <p>• The block&apos;s contents changed after it was mined, so the stored hash no longer matches.</p>}
             {!check.linkOk && <p>• prevHash does not match the previous block&apos;s hash, so the link in the chain is broken.</p>}
             <p className="mt-2">
@@ -200,29 +201,29 @@ function BlockDetail({ block, i }: { block: Block; i: number }) {
         </div>
         {editing ? (
           <>
-            <p className="mb-2 text-xs text-amber-200">
+            <p className="mb-2 text-xs text-amber-800">
               Try changing a ticket price, an amount, or an address, then save. The block hash will no longer match.
             </p>
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               spellCheck={false}
-              className="h-96 w-full rounded-lg border border-white/10 bg-black/50 p-3 font-mono text-[11px] outline-none focus:border-rose-400"
+              className="h-96 w-full rounded-lg border border-zinc-200 bg-zinc-50 p-3 font-mono text-[11px] outline-none focus:border-rose-500"
             />
-            {err && <p className="mt-2 text-xs text-rose-300">{err}</p>}
+            {err && <p className="mt-2 text-xs text-rose-700">{err}</p>}
           </>
         ) : (
           <div className="space-y-2">
             {block.txs.map((tx) => (
-              <div key={tx.hash} className="rounded-lg border border-white/5 bg-black/30 p-3 text-xs">
+              <div key={tx.hash} className="rounded-lg border border-zinc-100 bg-zinc-50 p-3 text-xs">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Badge color="fuchsia">{tx.type}</Badge>
+                  <Badge color="violet">{tx.type}</Badge>
                   <Hash value={tx.hash} />
                 </div>
-                <div className="mt-2 text-zinc-400">
+                <div className="mt-2 text-zinc-600">
                   from <Who address={tx.from} />
                 </div>
-                <pre className="mt-1 overflow-x-auto text-[11px] text-zinc-300">{JSON.stringify(tx.payload)}</pre>
+                <pre className="mt-1 overflow-x-auto text-[11px] text-zinc-700">{JSON.stringify(tx.payload)}</pre>
               </div>
             ))}
           </div>

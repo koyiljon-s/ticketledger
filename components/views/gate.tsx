@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ACCOUNTS, ORGANIZER } from "@/lib/chain/accounts";
 import { useChain } from "../chain-provider";
+import { Container } from "../event-parts";
 import { Badge, Button, Card, Hash, Input, Label, PageHeader, Who } from "../ui";
 
 export function GateView() {
@@ -28,13 +29,13 @@ export function GateView() {
   const upcoming = Object.values(pendingState.tickets).filter((x) => x.usedAt === null);
 
   return (
-    <>
+    <Container>
       <PageHeader
         title="Gate Check-in"
         subtitle="Venue staff scan the fan's ticket. The scanner reads the blockchain to confirm the token exists, is owned by the presenting wallet and has not been used. Admitting the fan writes a CHECK_IN transaction, so the ticket can never be reused."
       />
       {!isOrganizer && (
-        <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 border-amber-400/30 bg-amber-400/5 text-sm">
+        <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 border-amber-300 bg-amber-50 text-sm">
           <span>Only the organizer&apos;s scanner can write CHECK_IN transactions. Anyone can still verify a ticket.</span>
           <Button variant="ghost" onClick={() => setAccount(ORGANIZER)}>
             Switch to 🎤 Aurora Live
@@ -60,10 +61,10 @@ export function GateView() {
               <select
                 value={claimed}
                 onChange={(e) => setClaimed(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm"
               >
                 {ACCOUNTS.map((a) => (
-                  <option key={a.address} value={a.address} className="bg-zinc-900">
+                  <option key={a.address} value={a.address}>
                     {a.emoji} {a.name}
                   </option>
                 ))}
@@ -88,7 +89,7 @@ export function GateView() {
                       setTicketId(x.id);
                       setClaimed(x.owner);
                     }}
-                    className="rounded-md border border-white/10 px-2 py-1 font-mono text-[11px] text-zinc-300 hover:border-fuchsia-400/50"
+                    className="rounded-md border border-zinc-200 px-2 py-1 font-mono text-[11px] text-zinc-700 hover:border-violet-500"
                   >
                     {x.id}
                   </button>
@@ -98,17 +99,17 @@ export function GateView() {
           )}
         </Card>
 
-        <Card className={verdict ? (verdict.ok ? "border-emerald-400/40" : "border-rose-400/40") : ""}>
+        <Card className={verdict ? (verdict.ok ? "border-emerald-400" : "border-rose-400") : ""}>
           {!verdict ? (
             <div className="grid h-full place-items-center py-16 text-sm text-zinc-500">Scan a ticket to verify it</div>
           ) : (
             <div className="space-y-4">
               <div className={`text-5xl ${verdict.ok ? "" : "grayscale"}`}>{verdict.ok ? "✅" : "⛔"}</div>
               <div>
-                <div className={`text-2xl font-bold ${verdict.ok ? "text-emerald-300" : "text-rose-300"}`}>
+                <div className={`text-2xl font-bold ${verdict.ok ? "text-emerald-700" : "text-rose-700"}`}>
                   {verdict.ok ? "ENTRY ALLOWED" : "ENTRY DENIED"}
                 </div>
-                <p className="mt-1 text-sm text-zinc-400">{verdict.reason}</p>
+                <p className="mt-1 text-sm text-zinc-600">{verdict.reason}</p>
               </div>
               {t && ev && (
                 <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
@@ -140,6 +141,6 @@ export function GateView() {
           )}
         </Card>
       </div>
-    </>
+    </Container>
   );
 }
