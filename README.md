@@ -1,81 +1,131 @@
-# 🎟️ StageChain: a blockchain ticketing demo for entertainment
+# TicketLedger
 
-A working demo of a **blockchain application (dApp) for the entertainment industry**, built for a blockchain course case study.
+**Live demo: https://ticketledger-three.vercel.app/**
 
-Tickets for concerts, festivals, film and eSports events are **tokens on a ledger**. A **smart contract** enforces the business rules:
+TicketLedger is a student case study on blockchain in entertainment. You can browse events, get a demo ticket recorded on a small blockchain in your browser, and then try to forge it.
 
-| Industry problem | What the demo does on-chain |
-| --- | --- |
-| Scalping and price gouging | Resale price is capped at face value + N%. A listing above the cap **reverts**. |
-| Counterfeit or duplicate tickets | The gate scanner checks that the token exists and that the presenting wallet owns it. `CHECK_IN` marks it used **forever**. |
-| Artists earn nothing on resales | Every resale automatically pays a **royalty** (basis points) to the organizer. |
-| Opaque ownership | Every mint, resale, transfer and check-in is a transaction in a hash-linked block that anyone can audit. |
+> **This is an academic project, not a real ticketing service.** Tickets give no entry to any event, and TIX is play money with no value.
 
-## Run it
+## What you can do
+
+- **Browse and search events** in five sections: Concerts, Sports, Arts & Theater, Family and Film.
+- **Get a demo ticket.** Your browser creates a wallet, signs a transaction and mines a block.
+- **See your tickets** and their blockchain records in My Tickets.
+- **Inspect and attack the chain** in the Block Explorer. A guided attack on a copy shows which check catches each trick.
+
+## Problems and answers
+
+| Problem | How the demo answers it | What it does not solve |
+| --- | --- | --- |
+| Fake tickets | Each ticket is signed with its owner's private key. Changing it breaks the signature. | The contract cannot confirm that an event is real. |
+| Bulk buying | The contract allows 4 tickets per wallet and 100 per event. | One person can create several wallets. |
+| Hidden history | Each purchase is in a block linked to the one before it. | This chain has only one node. |
+
+## Run it locally
+
+Requires [Node.js](https://nodejs.org/) 20.9 or later. No accounts or API keys are needed.
 
 ```bash
 npm install
 npm run dev
-# open http://localhost:3000
 ```
 
-No wallet, testnet or crypto is needed. The whole blockchain runs inside your browser tab and is saved to `localStorage`. Use **Reset demo** in the Block Explorer to start over.
+Open http://localhost:3000. To run the production build:
 
-### Optional: import real events from Ticketmaster
-
-1. Create a free account at [developer.ticketmaster.com](https://developer.ticketmaster.com/) and copy your **Consumer Key**.
-2. `cp .env.example .env.local` and set `TICKETMASTER_API_KEY=...`
-3. Restart `npm run dev`, switch to **Aurora Live** → **Organizer** → search → **Import** → **Mint on StageChain**.
-
-The key is used only on the server (`app/api/ticketmaster/events/route.ts` → `lib/ticketmaster.ts`) and never reaches the browser. Results are cached for about 1 hour. The default quota is 5,000 calls/day at 5 requests/second. Without a key, everything else still works and organizers can create events manually.
-
-> **Design note:** the UI borrows common ticketing UX *patterns* (search-first header, category tabs, date-block event rows, event page with ticket selector, mobile-ticket cards). Ticketmaster's API terms forbid apps that replicate or replace the Ticketmaster.com experience, and the API data is owned by Ticketmaster and/or organizers, so StageChain keeps its own brand, links back to the original event, and shows an attribution and data-use notice in the footer.
-
-## Guided demo (≈5 min, good for a presentation)
-
-0. **Import** (optional): as *Aurora Live* → **Organizer**, import a real Ticketmaster event and set its resale cap and royalty.
-1. **Buy**: act as *Alice* (wallet switcher, top-right) → open an event → choose a quantity → *Buy*. The transaction goes to the mempool and then gets mined into a block.
-2. **Scalping attempt**: switch to *Sam the Scalper*, buy a ticket, then **My Tickets** → "Try scalping at 5×" → *List*. The contract reverts with the anti-scalping rule.
-3. **Fair resale**: list a ticket at or below the cap, switch to *Bob* → **Resale Market** → *Buy*. The organizer receives the royalty, which shows under "Earned".
-4. **Gate**: switch to *Aurora Live* → **Gate Check-in** → verify and admit. Scan the same ticket again (denied: already used). Try `EVT-1#999` (denied: counterfeit) or the wrong presenting wallet (denied: not the owner).
-5. **Immutability**: **Block Explorer** → select a block → *Tamper with this block* → change a price → save. That block and every block after it turn red. *Re-mine* shows why rewriting history costs proof-of-work, which is the idea behind a 51% attack.
-
-## How it works
-
-```
-lib/chain/
-  types.ts        Tx, Block, Ticket, Event, WorldState types
-  blockchain.ts   SHA-256 (Web Crypto), proof-of-work mining, chain validation
-  contract.ts     The "smart contract": applyTx(state, tx) → newState or Revert
-  accounts.ts     Demo wallets
-components/
-  chain-provider.tsx  The "node": mempool, mining, replay → world state, persistence
-  event-parts.tsx     Shared event row / tile / badges
-  views/*             Home, Events, Event detail, Organizer (import), Resale, My Tickets, Gate, Explorer, How it works
-lib/ticketmaster.ts   Server-only Discovery API client (normalizes + caches results)
-app/api/ticketmaster/events/route.ts   Proxy route so the API key stays on the server
-contracts/
-  StageTicket.sol     The same rules written as a Solidity (EVM) contract, for reference
+```bash
+npm run build
+npm start
 ```
 
-- **State is derived, not stored.** The app replays every transaction in every block through `applyTx` to compute balances and ticket ownership, the same way an Ethereum node computes world state.
-- **Validation before inclusion.** A transaction is simulated against chain + mempool first. If it reverts, it never enters a block, like a failed `require()` in Solidity.
-- **Proof-of-work.** A block is valid only when `SHA-256(header + txs)` starts with 3 hex zeros. Each block also stores `prevHash`, which links the chain.
+Use `localhost` or HTTPS: browsers allow the required cryptography only on secure pages.
 
-### Simplifications compared with a real blockchain
+### Optional settings
 
-| Demo | Real world |
+Copy `.env.example` to `.env.local`, then restart the server.
+
+| Variable | Purpose |
 | --- | --- |
-| One node (your browser) | Thousands of peer-to-peer nodes reaching consensus |
-| Wallet switcher, no signatures | ECDSA (secp256k1) signatures from a private key, e.g. MetaMask |
-| Integer `TIX` token | ETH / stablecoins (USDC) paid in wei |
-| Tiny PoW difficulty | Ethereum uses Proof-of-Stake; Bitcoin uses PoW at enormous difficulty |
-| Ticket ID + wallet picker at the gate | Rotating QR code with a signed challenge, so a screenshot is useless |
+| `EVENTS_USE_SAMPLE` | `true` uses fictional events for every list. Useful for presenting offline. |
+| `MUSICBRAINZ_CONTACT` | Email or URL sent to MusicBrainz, whose API rules ask for contact details. |
 
-## Discussion points for the case study
+The `TICKETMASTER_*` variables are for a client that no page uses yet.
 
-- **Benefits:** transparency, programmable rules (royalties and caps), less fraud, interoperable tickets (any wallet or marketplace can read them), and a direct artist-to-fan relationship.
-- **Challenges:** UX of wallets and keys, gas fees and scalability (so usually L2s like Polygon or Base), off-chain scalping (selling the wallet's private key), privacy of an on-chain purchase history, regulation and consumer protection (refunds), and energy use for PoW chains.
-- **Real-world examples worth researching:** NFT ticketing pilots by major ticketing platforms, GET Protocol, YellowHeart, and music royalty projects such as Audius and Royal.
+## How the blockchain works
 
-> Educational project. Not audited, no real money.
+1. **Wallet:** the browser creates an ECDSA P-256 key pair. The address comes from a SHA-256 hash of the public key. Every wallet starts with 1,000 TIX.
+2. **Transaction:** buying a ticket signs the event details and a nonce, which prevents the transaction from being used twice.
+3. **Contract:** [`contract.ts`](lib/chain/contract.ts) checks the price (50 TIX), balance, supply, wallet limit and event date. It is TypeScript code that plays the role of a smart contract.
+4. **Block:** the browser searches for a nonce that makes the block's SHA-256 hash start with three zeros. The block also stores the previous block's hash.
+5. **Validation:** every load replays the chain and checks all links, hashes, proof-of-work, signatures and contract rules.
+
+Balances and ticket ownership are calculated from the chain. The chain and wallet are saved in the browser's `localStorage`.
+
+### Attack demo
+
+| The attacker... | The chain still detects |
+| --- | --- |
+| changes a ticket | wrong transaction hash, invalid signature |
+| recalculates the transaction hash | wrong block hash, invalid signature |
+| re-mines that block | broken link to the next block, invalid signature |
+| re-mines every later block | **invalid signature** |
+
+Redoing the work can repair hashes and links, but it cannot produce the owner's signature without their private key.
+
+## Presentation script (about 5 minutes)
+
+**Before you start:** open the home page and one concert in advance, because live sources can be slow. Use the same browser throughout, and get four tickets for different events.
+
+1. **Home:** introduce the problem and the disclaimer.
+2. **Event page:** get one more ticket and point out the wallet, price and new block.
+3. **My Tickets:** open a ticket's blockchain record.
+4. **Block Explorer:** show how the facing edges of neighboring blocks have the same color.
+5. **Attack:** select block 1, choose **Try to tamper with this ticket**, and go through all four steps.
+6. **Limits:** finish with the section below.
+
+**Offline backup:** run it locally with `EVENTS_USE_SAMPLE=true`.
+
+## Limits
+
+- **One node.** Nothing is decentralized here. On a real network, many independent nodes would keep copies and reject a forged chain.
+- **An owner can re-sign their own ticket.** With one node, nobody else holds the original to compare.
+- **No organizer.** Real tickets would need the organizer to issue and accept them.
+- **Demo wallet.** The private key is stored unprotected in the browser. Clearing site data deletes the wallet and tickets.
+- **Not built:** resale, transfers, royalties and gate check-in.
+- **Cancelled events** are blocked on the event page, not by the contract.
+- **Search** covers only events listed in the five sections.
+
+## Data sources
+
+| Content | Source |
+| --- | --- |
+| Concerts | [MusicBrainz](https://musicbrainz.org/) |
+| Artist photos | [Wikimedia Commons](https://commons.wikimedia.org/), found through [Wikidata](https://www.wikidata.org/). Authors and licences are credited on the site. |
+| Sports | [TheSportsDB](https://www.thesportsdb.com/), using its free shared key. Times are UTC. |
+| Arts & Theater, Family, Film | Fictional sample events |
+| Other artwork | Generated from the event's ID |
+
+If a live source fails, its list shows sample events with a label. Listings may be incomplete or out of date. This project is not affiliated with or endorsed by these sources, or by any artist, team or venue.
+
+## Project structure
+
+```text
+app/                  Pages
+components/
+  events/             Event cards, lists, images and the ticket panel
+  explorer/           Block map, details and attack flow
+  tickets/            My Tickets
+lib/
+  chain/              Blockchain, contract rules and browser storage
+  catalog.ts          Chooses live or sample events
+  musicbrainz.ts      Concerts
+  sportsdb.ts         Sports
+  artist-photos.ts    Artist photos and licences
+  sample-events.ts    Fictional events
+  search.ts           Search
+```
+
+Built with Next.js 16, React 19, TypeScript and Tailwind CSS 4. The blockchain uses the browser's Web Crypto API and no blockchain library.
+
+## Licensing
+
+No licence has been chosen for this code. The Avenir font files are commercial and are not covered by any licence for this project. Event data and photos keep the terms of their sources.
