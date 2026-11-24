@@ -47,8 +47,12 @@ export function Footer() {
         <div className="text-base">
           <h2 className="mb-3 font-bold uppercase tracking-wide text-white">Data &amp; attribution</h2>
           <p>
-            Event information is provided by the public Ticketmaster Discovery API and belongs to Ticketmaster and/or the event organizers. This
-            project is not affiliated with, endorsed by or sponsored by Ticketmaster.
+            Concert information comes from the open{" "}
+            <a href="https://musicbrainz.org/" target="_blank" rel="noreferrer" className="underline transition hover:text-white">
+              MusicBrainz
+            </a>{" "}
+            database. This project is not affiliated with or endorsed by MusicBrainz, the artists or the venues. Events marked as sample data are
+            fictional.
           </p>
         </div>
       </div>

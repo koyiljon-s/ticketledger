@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { TmEvent } from "@/lib/ticketmaster";
+import type { EventItem } from "@/lib/events";
 
 const GENRE_GRADIENTS: Record<string, string> = {
   Pop: "from-pink-500 to-fuchsia-700",
@@ -14,16 +14,27 @@ const GENRE_GRADIENTS: Record<string, string> = {
   Classical: "from-stone-500 to-stone-800",
 };
 
+const GRADIENTS = Object.values(GENRE_GRADIENTS);
+
+/** Stable colour for events without a genre, so the list isn't all one colour. */
+function gradientFor(event: EventItem) {
+  const byGenre = GENRE_GRADIENTS[event.genre ?? ""];
+  if (byGenre) return byGenre;
+  let hash = 0;
+  for (const c of event.id) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
+  return GRADIENTS[hash % GRADIENTS.length];
+}
+
 /**
- * Event artwork. Real Ticketmaster images are shown as-is (unoptimized, so no
- * image-host config is needed). Events without an image (e.g. sample data) get
- * a genre-coloured placeholder.
+ * Event artwork. Provider images are shown as-is (unoptimized, so no image-host
+ * config is needed). Events without one (MusicBrainz, sample data) get a
+ * coloured placeholder.
  */
-export function EventImage({ event, sizes, className = "" }: { event: TmEvent; sizes: string; className?: string }) {
+export function EventImage({ event, sizes, className = "" }: { event: EventItem; sizes: string; className?: string }) {
   if (event.image) {
     return <Image src={event.image} alt={event.name} fill unoptimized sizes={sizes} className={`object-cover ${className}`} />;
   }
-  const gradient = GENRE_GRADIENTS[event.genre ?? ""] ?? "from-[#024bde] to-[#121212]";
+  const gradient = gradientFor(event);
   return (
     <div aria-hidden className={`absolute inset-0 grid place-items-center bg-gradient-to-br ${gradient} ${className}`}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-1/3 w-1/3 text-white/40">
@@ -32,29 +43,5 @@ export function EventImage({ event, sizes, className = "" }: { event: TmEvent; s
         <circle cx="18" cy="16" r="3" />
       </svg>
     </div>
-  );
-}
-
-/** "Find tickets" for live events; a disabled label for sample events (no real tickets exist). */
-export function TicketButton({ event, className = "" }: { event: TmEvent; className?: string }) {
-  if (!event.url) {
-    return (
-      <span
-        title="Sample event: no real tickets available"
-        className={`shrink-0 cursor-not-allowed rounded-md border border-zinc-300 px-5 py-3 text-sm font-bold text-zinc-500 ${className}`}
-      >
-        Sample event
-      </span>
-    );
-  }
-  return (
-    <a
-      href={event.url}
-      target="_blank"
-      rel="noreferrer"
-      className={`shrink-0 rounded-md bg-[#024bde] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#0139a8] ${className}`}
-    >
-      Find tickets
-    </a>
   );
 }

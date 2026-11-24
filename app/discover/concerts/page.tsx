@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ApiNotice, SampleDataBanner } from "@/components/events/api-notice";
 import { EventCard } from "@/components/events/event-card";
 import { EventRow } from "@/components/events/event-row";
-import { searchEvents, type TmEvent } from "@/lib/ticketmaster";
+import { SampleDataBanner } from "@/components/events/sample-data-banner";
+import { getConcerts, type ConcertResult } from "@/lib/concerts";
 
 export const metadata: Metadata = {
   title: "Concerts · TicketLedger",
-  description: "Upcoming concerts and music events, powered by the Ticketmaster Discovery API.",
+  description: "Upcoming concerts around the world, powered by MusicBrainz.",
 };
 
 export default async function ConcertsPage() {
-  // "Music" is Ticketmaster's segment for concerts (see SECTIONS in components/Navbar.tsx).
-  const result = await searchEvents({ segmentName: "Music", size: 40 });
+  const result = await getConcerts(60);
 
   return (
     <main>
@@ -26,26 +25,25 @@ export default async function ConcertsPage() {
           </nav>
           <h1 className="mt-3 text-4xl font-black md:text-5xl">Concerts</h1>
           <p className="mt-2 max-w-2xl text-lg text-white/75">
-            Live music near you and around the world, from arena tours to club nights.
+            Live music around the world, from arena tours to club nights.
           </p>
         </div>
       </section>
 
       <div className="mx-auto max-w-384 space-y-12 px-5 py-10">
-        {result.ok && result.source === "sample" && <SampleDataBanner />}
-        {!result.ok ? (
-          <ApiNotice result={result} />
-        ) : result.data.events.length === 0 ? (
+        {result.source === "sample" && <SampleDataBanner reason={result.sampleReason} />}
+        {result.events.length === 0 ? (
           <p className="text-lg text-zinc-600">No upcoming concerts found.</p>
         ) : (
-          <ConcertList events={result.data.events} total={result.data.totalElements} />
+          <ConcertList result={result} />
         )}
       </div>
     </main>
   );
 }
 
-function ConcertList({ events, total }: { events: TmEvent[]; total: number }) {
+function ConcertList({ result }: { result: ConcertResult }) {
+  const { events, totalElements: total, source } = result;
   // Featured: the first 4 distinct shows (tours repeat the same name), preferring ones with artwork.
   const seen = new Set<string>();
   const distinct = events.filter((e) => !seen.has(e.name) && seen.add(e.name));
@@ -66,7 +64,7 @@ function ConcertList({ events, total }: { events: TmEvent[]; total: number }) {
 
       <section>
         <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
-          <h2 className="text-2xl font-black text-[#121212]">Upcoming concerts</h2>
+          <h2 className="text-2xl font-black text-[#121212]">{source === "live" ? "Concerts this week" : "Upcoming concerts"}</h2>
           <span className="text-base text-zinc-600">
             Showing {events.length} of {total.toLocaleString("en-US")} events
           </span>
@@ -76,7 +74,15 @@ function ConcertList({ events, total }: { events: TmEvent[]; total: number }) {
             <EventRow key={e.id} event={e} />
           ))}
         </ul>
-        <p className="mt-4 text-sm text-zinc-500">Event data © Ticketmaster and/or event organizers. Ticket links open on ticketmaster.com.</p>
+        {source === "live" && (
+          <p className="mt-4 text-sm text-zinc-500">
+            Event data from{" "}
+            <a href="https://musicbrainz.org/" target="_blank" rel="noreferrer" className="underline">
+              MusicBrainz
+            </a>
+            , maintained by volunteers, so details may be incomplete or out of date. Check with the venue before you go.
+          </p>
+        )}
       </section>
     </>
   );

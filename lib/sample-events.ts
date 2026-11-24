@@ -1,12 +1,13 @@
 /**
  * Sample data mode.
  *
- * Fictional events in the same shape the Ticketmaster client returns, used
- * when no API key is configured (or when TICKETMASTER_USE_SAMPLE=true, e.g. as
- * an offline backup for a presentation). The artists and shows are made up on
+ * Fictional events in the same shape the live sources return, used when a
+ * live source is unavailable or sample data is forced (e.g. as an offline
+ * backup for a presentation). The artists and shows are made up on
  * purpose so they are never mistaken for real events. Venues and cities are real.
  */
-import type { TmEvent, TmEventPage, TmSearch } from "./ticketmaster";
+import type { EventItem, EventPage } from "./events";
+import type { TmSearch } from "./ticketmaster";
 
 type Venue = { venue: string; city: string; state: string | null; country: string };
 
@@ -64,8 +65,9 @@ const CONCERTS: Row[] = [
 ];
 
 /** Sample events tagged with their Ticketmaster segment so section filters work. */
-const SAMPLE_EVENTS: (TmEvent & { segment: string })[] = CONCERTS.map(([name, genre, v, date, time, min, max], i) => ({
+const SAMPLE_EVENTS: (EventItem & { segment: string })[] = CONCERTS.map(([name, genre, v, date, time, min, max], i) => ({
   id: `sample-music-${i + 1}`,
+  provider: "sample",
   name,
   url: null, // no real ticket page for fictional events
   image: null,
@@ -84,7 +86,7 @@ const SAMPLE_EVENTS: (TmEvent & { segment: string })[] = CONCERTS.map(([name, ge
 }));
 
 /** Applies the same filters the live API supports, in a simplified form. */
-export function searchSampleEvents(search: TmSearch): TmEventPage {
+export function searchSampleEvents(search: TmSearch): EventPage {
   const keyword = search.keyword?.toLowerCase();
   const city = search.city?.toLowerCase();
   const matches = SAMPLE_EVENTS.filter(
@@ -99,4 +101,8 @@ export function searchSampleEvents(search: TmSearch): TmEventPage {
     events: matches.slice(0, search.size ?? 20).map(({ segment, ...event }) => event),
     totalElements: matches.length,
   };
+}
+
+export function getSampleEvent(id: string): EventItem | null {
+  return SAMPLE_EVENTS.find((e) => e.id === id) ?? null;
 }

@@ -1,9 +1,10 @@
-import type { TmEvent } from "@/lib/ticketmaster";
-import { EventImage, TicketButton } from "./event-image";
+import Link from "next/link";
+import type { EventItem } from "@/lib/events";
+import { EventImage } from "./event-image";
 import { dateParts, formatPlace, formatPrice, formatTime } from "./format";
 
-/** List row: date block · thumbnail · details · price · "Find tickets". */
-export function EventRow({ event }: { event: TmEvent }) {
+/** List row: date block · thumbnail · details · price · link. */
+export function EventRow({ event }: { event: EventItem }) {
   const d = dateParts(event.localDate);
   const time = formatTime(event.localTime);
   const price = formatPrice(event);
@@ -32,6 +33,11 @@ export function EventRow({ event }: { event: TmEvent }) {
         </div>
         <h3 className="truncate text-lg font-bold text-[#121212]">{event.name}</h3>
         <p className="truncate text-base text-zinc-700">{[formatPlace(event), event.venue].filter(Boolean).join(" · ")}</p>
+        {!!event.moreDates && (
+          <p className="text-sm text-zinc-500">
+            +{event.moreDates} more {event.moreDates === 1 ? "date" : "dates"} this week
+          </p>
+        )}
         {cancelled && <span className="mt-1 inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-bold uppercase text-red-700">Cancelled</span>}
       </div>
 
@@ -42,7 +48,14 @@ export function EventRow({ event }: { event: TmEvent }) {
         </div>
       )}
 
-      <TicketButton event={event} />
+      {/* No prefetch: each event page calls MusicBrainz, which allows about 1 request/second. */}
+      <Link
+        href={`/events/${event.id}`}
+        prefetch={false}
+        className="shrink-0 rounded-md bg-[#024bde] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#0139a8]"
+      >
+        Get ticket
+      </Link>
     </li>
   );
 }

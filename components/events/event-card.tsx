@@ -1,9 +1,10 @@
-import type { TmEvent } from "@/lib/ticketmaster";
+import Link from "next/link";
+import type { EventItem } from "@/lib/events";
 import { EventImage } from "./event-image";
 import { dateParts, formatPlace } from "./format";
 
-/** Image-first tile for the "Featured" grid. Live events open on Ticketmaster. */
-export function EventCard({ event }: { event: TmEvent }) {
+/** Image-first tile for the "Featured" grid. Opens the event page. */
+export function EventCard({ event }: { event: EventItem }) {
   const d = dateParts(event.localDate);
   const body = (
     <>
@@ -23,11 +24,9 @@ export function EventCard({ event }: { event: TmEvent }) {
   );
 
   const className = "group block overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200 transition hover:shadow-lg";
-  return event.url ? (
-    <a href={event.url} target="_blank" rel="noreferrer" className={className}>
+  return (
+    <Link href={`/events/${event.id}`} prefetch={false} className={className}>
       {body}
-    </a>
-  ) : (
-    <div className={className}>{body}</div>
+    </Link>
   );
 }

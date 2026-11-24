@@ -10,37 +10,10 @@
  * same functions return fictional events from ./sample-events.ts instead.
  */
 import { cacheLife } from "next/cache";
+import type { EventItem, EventPage } from "./events";
 import { searchSampleEvents } from "./sample-events";
 
 const BASE_URL = "https://app.ticketmaster.com/discovery/v2";
-
-// ── Normalized types used by the UI ─────────────────────────────────────────
-
-export type TmEvent = {
-  id: string;
-  name: string;
-  /** Ticketmaster event page for real tickets; null for sample events. */
-  url: string | null;
-  image: string | null;
-  /** "YYYY-MM-DD", or null when the date is TBA. */
-  localDate: string | null;
-  /** "HH:mm", or null when the time is TBA. */
-  localTime: string | null;
-  status: string | null;
-  genre: string | null;
-  venue: string | null;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  priceMin: number | null;
-  priceMax: number | null;
-  currency: string | null;
-};
-
-export type TmEventPage = {
-  events: TmEvent[];
-  totalElements: number;
-};
 
 export type DataSource = "live" | "sample";
 
@@ -54,7 +27,7 @@ export type TmSearch = {
 };
 
 export type TmResult =
-  | { ok: true; source: DataSource; data: TmEventPage }
+  | { ok: true; source: DataSource; data: EventPage }
   | { ok: false; reason: "unauthorized" | "rate_limited" | "upstream"; message: string };
 
 // ── Raw API shapes (only the fields we read) ────────────────────────────────
@@ -105,7 +78,7 @@ export function getDataSource(): DataSource {
   return process.env.TICKETMASTER_API_KEY ? "live" : "sample";
 }
 
-async function fetchEvents(search: TmSearch): Promise<TmEventPage> {
+async function fetchEvents(search: TmSearch): Promise<EventPage> {
   "use cache";
   cacheLife("hours");
 
@@ -134,13 +107,14 @@ async function fetchEvents(search: TmSearch): Promise<TmEventPage> {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function normalizeEvent(e: RawEvent): TmEvent {
+function normalizeEvent(e: RawEvent): EventItem {
   const venue = e._embedded?.venues?.[0];
   const cls = e.classifications?.find((c) => c.primary) ?? e.classifications?.[0];
   const price = e.priceRanges?.[0];
   const genre = cls?.genre?.name;
   return {
     id: e.id,
+    provider: "ticketmaster",
     name: e.name,
     url: e.url ?? null,
     image: pickImage(e.images),

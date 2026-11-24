@@ -1,10 +1,10 @@
-import type { TmEvent } from "@/lib/ticketmaster";
+import type { EventItem } from "@/lib/events";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /**
- * Splits Ticketmaster's local "YYYY-MM-DD" into display parts. Parsed by hand so
+ * Splits a local "YYYY-MM-DD" into display parts. Parsed by hand so
  * the server's time zone can never shift the date by a day.
  */
 export function dateParts(localDate: string | null) {
@@ -23,11 +23,11 @@ export function formatTime(localTime: string | null) {
   return `${h % 12 || 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
 }
 
-export function formatPlace(e: Pick<TmEvent, "city" | "state" | "country">) {
+export function formatPlace(e: Pick<EventItem, "city" | "state" | "country">) {
   return [e.city, e.state ?? e.country].filter(Boolean).join(", ");
 }
 
-export function formatPrice(e: Pick<TmEvent, "priceMin" | "currency">) {
+export function formatPrice(e: Pick<EventItem, "priceMin" | "currency">) {
   if (e.priceMin === null) return null;
   try {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: e.currency ?? "USD", maximumFractionDigits: 0 }).format(e.priceMin);
