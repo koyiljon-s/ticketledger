@@ -15,6 +15,12 @@ function styleFor(hash: string, colors: HashColors) {
   return { backgroundColor: `hsl(${hue} 85% 88%)`, color: `hsl(${hue} 80% 20%)` };
 }
 
+/** Strong colour for the edges of a block on the map. */
+export function hashTint(hash: string, colors: HashColors) {
+  const hue = colors.get(hash);
+  return hue === undefined ? "#a1a1aa" : `hsl(${hue} 75% 50%)`;
+}
+
 /** Short, colour-coded hash. */
 export function HashChip({ hash, colors }: { hash: string; colors: HashColors }) {
   return (
@@ -47,7 +53,7 @@ export function CopyValue({ value, label, colors }: { value: string; label: stri
         type="button"
         onClick={() => void copy()}
         aria-label={`Copy ${label}`}
-        className="shrink-0 rounded border border-zinc-300 px-2 py-1 text-xs font-bold text-zinc-700 hover:bg-zinc-50"
+        className="shrink-0 py-1 text-xs font-bold text-[#024bde] hover:underline"
       >
         <span aria-live="polite">{result === "copied" ? "Copied" : result === "failed" ? "Can't copy" : "Copy"}</span>
       </button>

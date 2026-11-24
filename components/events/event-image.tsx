@@ -31,7 +31,7 @@ function randomFrom(text: string) {
 }
 
 function Artwork({ event }: { event: ArtEvent }) {
-  const rnd = randomFrom(event.id + event.name);
+  const rnd = randomFrom(event.id);
   // Any hue, plus an accent from a different part of the colour wheel.
   const hue = rnd(360);
   const bg = `hsl(${hue} 60% 20%)`;
