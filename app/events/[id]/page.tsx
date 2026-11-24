@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EventImage } from "@/components/events/event-image";
 import { dateParts, formatPlace, formatTime } from "@/components/events/format";
+import { PhotoCredit } from "@/components/events/photo-credits";
 import { TicketPanel } from "@/components/events/ticket-panel";
 import { getEvent } from "@/lib/catalog";
 import { getSection } from "@/lib/sections";
@@ -48,8 +49,15 @@ async function EventDetail({ id }: { id: string }) {
     <>
       <section className="bg-[#121212] text-white">
         <div className="mx-auto flex max-w-384 flex-col gap-8 px-5 py-10 md:flex-row md:items-center">
-          <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg md:w-96">
-            <EventImage event={event} sizes="(max-width: 768px) 100vw, 384px" />
+          <div className="w-full shrink-0 md:w-96">
+            <div className="relative aspect-video overflow-hidden rounded-lg">
+              <EventImage event={event} sizes="(max-width: 768px) 100vw, 384px" />
+            </div>
+            {event.imageCredit && (
+              <p className="mt-2 text-xs text-white/60">
+                <PhotoCredit credit={event.imageCredit} />
+              </p>
+            )}
           </div>
           <div>
             <nav aria-label="Breadcrumb" className="text-sm text-white/60">
@@ -89,7 +97,9 @@ async function EventDetail({ id }: { id: string }) {
             )}
           </p>
         </section>
-        <TicketPanel event={{ id: event.id, name: event.name, date: event.localDate, venue: event.venue }} notice={off && `This event was ${off}.`} />
+        <TicketPanel
+          photo={event.image && event.imageCredit ? { src: event.image, credit: event.imageCredit } : null}
+          event={{ id: event.id, name: event.name, date: event.localDate, venue: event.venue }} notice={off && `This event was ${off}.`} />
       </div>
     </>
   );

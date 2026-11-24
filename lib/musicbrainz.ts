@@ -7,6 +7,7 @@
  *   tags/genres, which are licensed CC BY-NC-SA.
  * - Search results can't be sorted by date, so we load a whole week and sort it here.
  */
+import { fetchArtistPhotos, type Photo } from "./artist-photos";
 import type { EventItem, EventPage } from "./events";
 
 const BASE_URL = "https://musicbrainz.org/ws/2";
@@ -57,25 +58,31 @@ export async function fetchUpcomingConcerts(size: number): Promise<EventPage> {
   // Group repeat shows: keep each artist's first date and count the rest.
   const groups = new Map<string, { event: RawEvent; moreDates: number }>();
   for (const e of dated) {
-    const key = e.relations?.find((r) => r.type === "main performer" && r.artist)?.artist?.id ?? e.name;
+    const key = artistIdOf(e) ?? e.name;
     const group = groups.get(key);
     if (group) group.moreDates++;
     else groups.set(key, { event: e, moreDates: 0 });
   }
 
   const shown = [...groups.values()].slice(0, size);
-  const cities = await fetchCities(get, shown.map((g) => placeOf(g.event)?.id));
+  const [cities, lookup] = await Promise.all([
+    fetchCities(get, shown.map((g) => placeOf(g.event)?.id)),
+    fetchArtistPhotos(shown.flatMap((g) => artistIdOf(g.event) ?? [])),
+  ]);
   return {
-    events: shown.map((g) => normalize(g.event, g.moreDates, cities)),
+    events: shown.map((g) => normalize(g.event, g.moreDates, cities, lookup.photos)),
     totalElements: groups.size,
+    incomplete: !lookup.complete,
   };
 }
 
 /** One event by MusicBrainz ID, or null if it doesn't exist. Throws on failure. */
-export async function fetchConcert(id: string): Promise<EventItem | null> {
+export async function fetchConcert(id: string): Promise<{ event: EventItem; incomplete: boolean } | null> {
   try {
     const event = await request<RawEvent>(`event/${id}?inc=artist-rels+place-rels+area-rels&fmt=json`, newPace());
-    return normalize(event, 0, new Map());
+    const artistId = artistIdOf(event);
+    const { photos, complete } = await fetchArtistPhotos(artistId ? [artistId] : []);
+    return { event: normalize(event, 0, new Map(), photos), incomplete: !complete };
   } catch (e) {
     if (e instanceof HttpError && e.status === 404) return null;
     throw e;
@@ -96,7 +103,8 @@ async function fetchCities(get: Get, placeIds: (string | undefined)[]) {
   return cities;
 }
 
-function normalize(e: RawEvent, moreDates: number, cities: Map<string, string>): EventItem {
+function normalize(e: RawEvent, moreDates: number, cities: Map<string, string>, photos: Map<string, Photo>): EventItem {
+  const photo = photos.get(artistIdOf(e) ?? "");
   const place = placeOf(e);
   return {
     id: e.id,
@@ -104,7 +112,8 @@ function normalize(e: RawEvent, moreDates: number, cities: Map<string, string>):
     section: "concerts",
     name: e.name,
     url: `https://musicbrainz.org/event/${e.id}`,
-    image: null,
+    image: photo?.src ?? null,
+    imageCredit: photo?.credit,
     localDate: beginOf(e),
     localTime: e.time ? e.time.slice(0, 5) : null,
     status: e.cancelled ? "cancelled" : null,
@@ -173,4 +182,5 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 const beginOf = (e: RawEvent) => e["life-span"]?.begin ?? "";
 const sortKey = (e: RawEvent) => `${beginOf(e)}T${e.time || "99:99"}`; // unknown times go last
+const artistIdOf = (e: RawEvent) => e.relations?.find((r) => r.type === "main performer" && r.artist)?.artist?.id;
 const placeOf = (e: RawEvent) => e.relations?.find((r) => r.type === "held at" && r.place)?.place;

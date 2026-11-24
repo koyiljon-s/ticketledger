@@ -4,6 +4,7 @@ import { getSection, type Section, type SectionSlug } from "@/lib/sections";
 import { EventCard } from "./event-card";
 import { EventRow } from "./event-row";
 import { pickFeatured } from "./featured";
+import { PhotoCredits } from "./photo-credits";
 import { SampleDataBanner } from "./sample-data-banner";
 
 const CREDITS: Partial<Record<SectionSlug, { name: string; href: string }>> = {
@@ -75,6 +76,7 @@ function Events({ section, result }: { section: Section; result: EventList }) {
             <EventRow key={e.id} event={e} />
           ))}
         </ul>
+        <PhotoCredits events={events} />
         {source === "live" && credit && (
           <p className="mt-4 text-sm text-zinc-500">
             Event data from{" "}

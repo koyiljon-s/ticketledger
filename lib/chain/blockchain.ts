@@ -42,12 +42,12 @@ export async function signTx(wallet: Wallet, body: MintBody): Promise<Tx> {
   return { body, signature, hash: await sha256(text) };
 }
 
-async function inspectTx(tx: Tx): Promise<string[]> {
-  const problems: string[] = [];
+async function inspectTx(tx: Tx): Promise<Problem[]> {
+  const problems: Problem[] = [];
   const text = serialize(tx.body);
-  if ((await sha256(text)) !== tx.hash) problems.push("Transaction hash doesn't match the ticket's data.");
-  if ((await addressOf(tx.body.publicKey)) !== tx.body.from) problems.push("Public key doesn't belong to the owner's address.");
-  if (!(await verifySignature(tx, text))) problems.push("Invalid signature: the owner never signed this data.");
+  if ((await sha256(text)) !== tx.hash) problems.push({ check: "data", message: "Transaction hash doesn't match the ticket's data." });
+  if ((await addressOf(tx.body.publicKey)) !== tx.body.from) problems.push({ check: "signature", message: "Public key doesn't belong to the owner's address." });
+  if (!(await verifySignature(tx, text))) problems.push({ check: "signature", message: "Invalid signature: the owner never signed this data." });
   return problems;
 }
 
@@ -75,24 +75,27 @@ export async function mineBlock(prev: Block | null, txs: Tx[]): Promise<Block> {
   }
 }
 
-export type BlockReport = { index: number; problems: string[] };
+export type CheckName = "link" | "hash" | "work" | "data" | "signature" | "rules";
+export type Problem = { check: CheckName; message: string };
+export type BlockReport = { index: number; problems: Problem[] };
 
 /** Checks every block and lists everything wrong with it, continuing past failures. */
 export async function inspectChain(chain: Block[]): Promise<{ reports: BlockReport[]; state: WorldState }> {
   const reports: BlockReport[] = [];
   let state = emptyState();
   for (const [i, block] of chain.entries()) {
-    const problems: string[] = [];
-    if (block.index !== i) problems.push("Wrong block number.");
-    if (block.prevHash !== (i === 0 ? GENESIS_PREV : chain[i - 1].hash)) problems.push("Broken link: previous hash doesn't match the block before it.");
-    if (block.hash !== (await hashBlock(block))) problems.push("Block hash doesn't match the block's contents.");
-    if (block.difficulty !== DIFFICULTY || !block.hash.startsWith("0".repeat(DIFFICULTY))) problems.push("Not enough proof-of-work.");
+    const problems: Problem[] = [];
+    const fail = (check: CheckName, message: string) => problems.push({ check, message });
+    if (block.index !== i) fail("link", "Wrong block number.");
+    if (block.prevHash !== (i === 0 ? GENESIS_PREV : chain[i - 1].hash)) fail("link", "Broken link: previous hash doesn't match the block before it.");
+    if (block.hash !== (await hashBlock(block))) fail("hash", "Block hash doesn't match the block's contents.");
+    if (block.difficulty !== DIFFICULTY || !block.hash.startsWith("0".repeat(DIFFICULTY))) fail("work", "Not enough proof-of-work.");
     for (const tx of block.txs) {
       problems.push(...(await inspectTx(tx)));
       try {
         state = applyTx(state, tx, i);
       } catch (e) {
-        problems.push(`Contract rule broken: ${e instanceof Error ? e.message : String(e)}`);
+        fail("rules", `Contract rule broken: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
     reports.push({ index: i, problems });
@@ -104,7 +107,7 @@ export async function inspectChain(chain: Block[]): Promise<{ reports: BlockRepo
 export async function validateChain(chain: Block[]): Promise<WorldState> {
   const { reports, state } = await inspectChain(chain);
   const bad = reports.find((r) => r.problems.length > 0);
-  if (bad) throw new Error(`Block #${bad.index} is invalid. ${bad.problems[0]}`);
+  if (bad) throw new Error(`Block #${bad.index} is invalid. ${bad.problems[0].message}`);
   return state;
 }
 

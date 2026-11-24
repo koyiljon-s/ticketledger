@@ -5,11 +5,12 @@ import { useState, useSyncExternalStore } from "react";
 import { ChainError } from "@/components/tickets/chain-error";
 import { balanceOf, MAX_PER_WALLET, SUPPLY_PER_EVENT, TICKET_PRICE } from "@/lib/chain/contract";
 import { getServerSnapshot, getSnapshot, mintTicket, subscribe } from "@/lib/chain/store";
+import { saveEventPhoto, type EventPhoto } from "@/lib/event-images";
 import type { MintBody } from "@/lib/chain/types";
 
 const short = (s: string) => `${s.slice(0, 10)}…${s.slice(-6)}`;
 
-export function TicketPanel({ event, notice }: { event: MintBody["event"]; /** Why tickets are off, e.g. cancelled. */ notice: string | null }) {
+export function TicketPanel({ event, notice, photo }: { event: MintBody["event"]; photo: EventPhoto | null; /** Why tickets are off, e.g. cancelled. */ notice: string | null }) {
   const node = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [mining, setMining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +20,7 @@ export function TicketPanel({ event, notice }: { event: MintBody["event"]; /** W
     setError(null);
     try {
       await mintTicket(event);
+      if (photo) saveEventPhoto(event.id, photo);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

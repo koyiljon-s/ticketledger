@@ -61,7 +61,7 @@ export function Footer() {
             <a href="https://www.thesportsdb.com/" target="_blank" rel="noreferrer" className="underline transition hover:text-white">
               TheSportsDB
             </a>
-            . This project is not affiliated with or endorsed by them, the artists, the teams or the venues. Events marked as sample data are
+            . Artist photos come from Wikimedia Commons, with credits next to them. This project is not affiliated with or endorsed by them, the artists, the teams or the venues. Events marked as sample data are
             fictional.
           </p>
         </div>

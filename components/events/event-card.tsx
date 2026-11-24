@@ -19,6 +19,11 @@ export function EventCard({ event }: { event: EventItem }) {
         <div className="text-sm font-bold uppercase text-[#024bde]">{d ? `${d.weekday}, ${d.month} ${d.day}, ${d.year}` : "Date TBA"}</div>
         <h3 className="mt-1 line-clamp-2 text-lg font-bold leading-snug text-[#121212] group-hover:underline">{event.name}</h3>
         <p className="mt-1 truncate text-sm text-zinc-600">{[event.venue, formatPlace(event)].filter(Boolean).join(" · ")}</p>
+        {event.imageCredit && (
+          <p className="mt-2 truncate text-xs text-zinc-500">
+            Photo: {event.imageCredit.author}, {event.imageCredit.license}
+          </p>
+        )}
       </div>
     </>
   );

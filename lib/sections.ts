@@ -19,4 +19,13 @@ export const SECTIONS: Section[] = [
   section("film", "Film", "screenings", "Premieres, festivals and special screenings."),
 ];
 
+/** Section of an event ID (see getEvent in catalog.ts for the ID formats). */
+export function sectionOfId(id: string): SectionSlug {
+  if (id.startsWith("sport-") || id.startsWith("sample-sports-")) return "sports";
+  if (id.startsWith("sample-arts-")) return "arts-theater";
+  if (id.startsWith("sample-family-")) return "family";
+  if (id.startsWith("sample-film-")) return "film";
+  return "concerts";
+}
+
 export const getSection = (slug: SectionSlug) => SECTIONS.find((s) => s.slug === slug)!;

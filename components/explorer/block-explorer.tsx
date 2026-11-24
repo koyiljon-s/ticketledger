@@ -1,25 +1,24 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { ChainError } from "@/components/tickets/chain-error";
 import { DIFFICULTY, editEventName, inspectChain, rehashTxs, remine, type BlockReport } from "@/lib/chain/blockchain";
 import { getServerSnapshot, getSnapshot, subscribe } from "@/lib/chain/store";
 import type { Block } from "@/lib/chain/types";
-
-/** A simulated attack on a copy of the chain. It is never saved. */
-type Attack = { target: number; chain: Block[]; step: number };
-
-const STEPS = [
-  { action: "Recalculate the transaction hash", result: "You changed the ticket. Its data no longer matches its hash or signature." },
-  { action: "Re-mine this block", result: "The transaction hash matches again, but the block's own hash is now wrong." },
-  { action: "Re-mine every later block", result: "This block has valid proof-of-work again. Any later block still points to the old hash." },
-  { action: null, result: "All hashes, links and proof-of-work are valid again, but the signature is not. Only the owner's private key could sign this change." },
-];
+import { BlockDetail } from "./block-detail";
+import { ChainStrip } from "./chain-strip";
+import { assignColors } from "./hash";
+import { TamperLab, type Attack } from "./tamper-lab";
 
 export function BlockExplorer() {
   const node = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  if (node.status === "loading") return <p className="text-lg text-zinc-600">Checking your blockchain…</p>;
+  if (node.status === "loading") {
+    return (
+      <div role="status" className="rounded-lg bg-white p-10 text-center text-lg text-zinc-600 shadow-sm ring-1 ring-zinc-200">
+        Checking your blockchain…
+      </div>
+    );
+  }
   if (node.status === "error") {
     return (
       <div className="rounded-lg border border-red-300 bg-red-50 p-6">
@@ -35,6 +34,7 @@ function Explorer({ saved }: { saved: Block[] }) {
   const [selected, setSelected] = useState<number | null>(null);
   const [checked, setChecked] = useState<{ chain: Block[]; reports: BlockReport[] } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const chain = attack?.chain ?? saved;
   const index = Math.min(selected ?? chain.length - 1, chain.length - 1);
@@ -52,19 +52,28 @@ function Explorer({ saved }: { saved: Block[] }) {
   // Never show results that belong to a different version of the chain.
   const reports = checked?.chain === chain ? checked.reports : null;
   const invalid = reports?.filter((r) => r.problems.length > 0) ?? [];
+  // Real hashes come first, so their colours stay the same during an attack.
+  const colors = assignColors([...saved, ...chain].map((b) => b.hash));
+  const tickets = chain.reduce((n, b) => n + b.txs.length, 0);
+  const firstTicket = saved.findIndex((b) => b.txs.length > 0);
 
-  async function nextStep() {
+  function start(name: string) {
+    setError(null);
+    setSelected(index);
+    setAttack({ target: index, chain: editEventName(saved, index, name), stage: "edited", from: saved[index].txs[0].body.event.name, to: name });
+  }
+
+  async function next() {
     if (!attack) return;
-    const { target, step } = attack;
+    const { target, stage, chain: copy } = attack;
     setBusy(true);
+    setError(null);
     try {
-      const next =
-        step === 0
-          ? await rehashTxs(attack.chain, target)
-          : step === 1
-            ? await remine(attack.chain, target, target)
-            : await remine(attack.chain, target + 1, attack.chain.length - 1);
-      setAttack({ target, chain: next, step: step + 1 });
+      if (stage === "edited") setAttack({ ...attack, chain: await rehashTxs(copy, target), stage: "rehashed" });
+      else if (stage === "rehashed") setAttack({ ...attack, chain: await remine(copy, target, target), stage: "remined" });
+      else setAttack({ ...attack, chain: await remine(copy, target + 1, copy.length - 1), stage: "finished" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -72,166 +81,104 @@ function Explorer({ saved }: { saved: Block[] }) {
 
   return (
     <div className="space-y-8">
-      <div
-        role="status"
-        className={`rounded-lg border px-5 py-4 font-bold ${
-          !reports ? "border-zinc-300 bg-white text-zinc-600" : invalid.length ? "border-red-300 bg-red-50 text-red-900" : "border-emerald-300 bg-emerald-50 text-emerald-900"
-        }`}
-      >
-        {!reports
-          ? "Checking every block…"
-          : invalid.length
-            ? `✗ Invalid: the network would reject this chain (problem in block ${invalid.map((r) => `#${r.index}`).join(", ")})`
-            : `✓ Valid: all ${chain.length} ${chain.length === 1 ? "block" : "blocks"} check out`}
+      <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+        <Verdict total={chain.length} invalid={reports && invalid.map((r) => r.index)} simulated={attack !== null} />
+        <dl className="grid grid-cols-3 gap-4">
+          <Stat label="Blocks" value={chain.length} />
+          <Stat label="Tickets" value={tickets} />
+          <Stat label="Zeros needed" value={DIFFICULTY} />
+        </dl>
       </div>
 
-      {attack && (
-        <section className="rounded-lg border border-amber-300 bg-amber-50 p-5 text-amber-950">
-          <h2 className="text-lg font-black">
-            Simulated attack on block #{attack.target} · step {attack.step + 1} of {STEPS.length}
+      <section aria-labelledby="chain-title">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="chain-title" className="text-2xl font-black">
+            {attack ? "The attacked copy" : "The chain"}
           </h2>
-          <p className="mt-1">{STEPS[attack.step].result}</p>
-          <p className="mt-1 text-sm">This is a copy. Your real tickets are safe.</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {STEPS[attack.step].action && (
-              <button disabled={busy} onClick={() => void nextStep()} className="rounded-md bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
-                {busy ? "Working…" : `Attacker: ${STEPS[attack.step].action}`}
-              </button>
-            )}
-            <button disabled={busy} onClick={() => setAttack(null)} className="rounded-md border border-amber-400 bg-white px-4 py-2 text-sm font-bold disabled:opacity-50">
-              Stop and restore real chain
-            </button>
-          </div>
-        </section>
-      )}
+          <p className="text-sm text-zinc-600">Same color = same hash. Each block&apos;s “previous” should match the block before it.</p>
+        </div>
+        <ChainStrip chain={chain} reports={reports} colors={colors} selected={index} target={attack?.target ?? null} onSelect={setSelected} />
+      </section>
 
-      <ol className="flex gap-3 overflow-x-auto p-1" aria-label="Blocks">
-        {chain.map((b, i) => {
-          const bad = (reports?.[i]?.problems.length ?? 0) > 0;
-          return (
-            <li key={i}>
-              <button
-                onClick={() => setSelected(i)}
-                aria-pressed={i === index}
-                className={`w-44 rounded-lg border p-4 text-left text-sm ${bad ? "border-red-400 bg-red-50" : "border-zinc-200 bg-white"} ${
-                  i === index ? "ring-2 ring-[#024bde]" : ""
-                }`}
-              >
-                <span className="flex justify-between font-bold">
-                  <span>Block #{i}</span>
-                  <span>{reports ? (bad ? "✗" : "✓") : "…"}</span>
-                </span>
-                <span className="mt-1 block text-zinc-600">{i === 0 ? "Genesis" : `${b.txs.length} ${b.txs.length === 1 ? "ticket" : "tickets"}`}</span>
-                <code className="mt-1 block truncate font-mono text-xs text-zinc-500">{b.hash}</code>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_24rem]">
+        <BlockDetail block={chain[index]} report={reports?.[index] ?? null} colors={colors} />
+        <TamperLab
+          attack={attack}
+          block={saved[index]?.txs.length ? saved[index] : null}
+          suggestion={firstTicket === -1 ? null : firstTicket}
+          busy={busy}
+          error={error}
+          onSelect={setSelected}
+          onStart={start}
+          onNext={() => void next()}
+          onStop={() => {
+            setError(null);
+            setAttack(null);
+          }}
+        />
+      </div>
 
-      <BlockDetail
-        key={`${index}-${attack ? "attack" : "real"}`}
-        block={chain[index]}
-        problems={reports?.[index]?.problems ?? []}
-        onAttack={
-          attack || chain[index].txs.length === 0 ? null : (name) => setAttack({ target: index, chain: editEventName(saved, index, name), step: 0 })
-        }
-      />
-
-      {chain.length === 1 && (
-        <p className="text-zinc-600">
-          Only the first (genesis) block exists.{" "}
-          <Link href="/discover/concerts" className="font-bold text-[#024bde] underline">
-            Get a demo ticket
-          </Link>{" "}
-          to add a block you can try to tamper with.
-        </p>
-      )}
-    </div>
-  );
-}
-
-function BlockDetail({ block, problems, onAttack }: { block: Block; problems: string[]; onAttack: ((name: string) => void) | null }) {
-  const original = block.txs[0]?.body.event.name ?? "";
-  const [name, setName] = useState(`${original} (VIP)`);
-
-  return (
-    <div className="grid gap-6 lg:grid-cols-2">
       <section className="rounded-lg bg-white p-6 shadow-sm ring-1 ring-zinc-200">
-        <h2 className="mb-4 text-xl font-black">Block #{block.index}</h2>
-        <dl className="space-y-3 text-sm">
-          <Row label="Mined">{new Date(block.timestamp).toLocaleString()}</Row>
-          <Row label="Previous hash" mono>
-            {block.prevHash}
-          </Row>
-          <Row label="Nonce (proof-of-work attempts)" mono>
-            {block.nonce}
-          </Row>
-          <Row label={`Hash (must start with ${DIFFICULTY} zeros)`} mono>
-            {block.hash}
-          </Row>
+        <h2 className="text-xl font-black">Words on this page</h2>
+        <dl className="mt-4 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <Term word="Block">A page in the record book. Here, each one after the first holds one ticket.</Term>
+          <Term word="Hash">A fingerprint of data. Change anything and the fingerprint changes completely.</Term>
+          <Term word="Proof-of-work">Trying numbers until the hash starts with {DIFFICULTY} zeros. Rewriting history means redoing it.</Term>
+          <Term word="Signature">Proof that the owner approved the data. Only their private key can create it.</Term>
         </dl>
-        {problems.length > 0 && (
-          <ul className="mt-5 list-disc space-y-1 rounded-md bg-red-50 p-4 pl-8 text-sm font-bold text-red-900">
-            {problems.map((p) => (
-              <li key={p}>{p}</li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="rounded-lg bg-white p-6 shadow-sm ring-1 ring-zinc-200">
-        <h2 className="mb-4 text-xl font-black">Transactions</h2>
-        {block.txs.length === 0 && <p className="text-zinc-600">The genesis block has no transactions. It only starts the chain.</p>}
-        {block.txs.map((tx) => (
-          <dl key={tx.signature} className="space-y-3 text-sm">
-            <Row label="Ticket for">{tx.body.event.name}</Row>
-            <Row label="Event date">{tx.body.event.date ?? "TBA"}</Row>
-            <Row label="Owner" mono>
-              {tx.body.from}
-            </Row>
-            <Row label="Transaction hash" mono>
-              {tx.hash}
-            </Row>
-            <Row label="Signature" mono>
-              {tx.signature}
-            </Row>
-          </dl>
-        ))}
-        {onAttack && (
-          <form
-            className="mt-5 border-t border-zinc-200 pt-5"
-            onSubmit={(e) => {
-              e.preventDefault();
-              onAttack(name);
-            }}
-          >
-            <label className="block text-sm font-bold" htmlFor="fake-name">
-              Try to change this ticket
-            </label>
-            <div className="mt-2 flex gap-2">
-              <input
-                id="fake-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm"
-              />
-              <button disabled={name === original} className="rounded-md bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
-                Tamper
-              </button>
-            </div>
-          </form>
-        )}
+        <p className="mt-5 text-sm text-zinc-500">
+          This chain lives in one browser. On a real blockchain, many independent computers keep copies and would reject the attacker&apos;s version.
+        </p>
       </section>
     </div>
   );
 }
 
-function Row({ label, mono = false, children }: { label: string; mono?: boolean; children: React.ReactNode }) {
+function Verdict({ total, invalid, simulated }: { total: number; invalid: number[] | null; simulated: boolean }) {
+  const state = !invalid ? "checking" : invalid.length ? "bad" : "good";
+  const style = {
+    checking: "border-zinc-300 bg-white text-zinc-700",
+    good: "border-emerald-300 bg-emerald-50 text-emerald-950",
+    bad: "border-red-300 bg-red-50 text-red-950",
+  }[state];
+  return (
+    <div role="status" className={`flex items-center gap-4 rounded-lg border-2 p-5 ${style}`}>
+      <span
+        aria-hidden
+        className={`grid h-12 w-12 shrink-0 place-items-center rounded-full text-2xl font-black text-white ${{ checking: "bg-zinc-400", good: "bg-emerald-600", bad: "bg-red-600" }[state]}`}
+      >
+        {{ checking: "…", good: "✓", bad: "✗" }[state]}
+      </span>
+      <div>
+        <p className="text-xl font-black">
+          {{ checking: "Checking every block…", good: "This chain is valid", bad: simulated ? "Tampering detected" : "This chain is invalid" }[state]}
+        </p>
+        <p>
+          {!invalid
+            ? "Recalculating hashes and signatures."
+            : invalid.length
+              ? `Problem in ${invalid.length === 1 ? "block" : "blocks"} ${invalid.map((i) => `#${i}`).join(", ")}. This copy would be rejected.`
+              : `${total === 1 ? "The only block passes" : `All ${total} blocks pass`} every check.`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex flex-col justify-center rounded-lg bg-white p-4 text-center shadow-sm ring-1 ring-zinc-200 lg:min-w-28">
+      <dt className="text-sm text-zinc-500">{label}</dt>
+      <dd className="text-2xl font-black">{value}</dd>
+    </div>
+  );
+}
+
+function Term({ word, children }: { word: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-zinc-500">{label}</dt>
-      <dd className={mono ? "font-mono text-xs break-all" : "font-bold"}>{children}</dd>
+      <dt className="font-bold">{word}</dt>
+      <dd className="mt-1 text-sm text-zinc-600">{children}</dd>
     </div>
   );
 }

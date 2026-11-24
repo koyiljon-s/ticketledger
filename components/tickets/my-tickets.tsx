@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
+import { EventImage } from "@/components/events/event-image";
+import { PhotoCredit } from "@/components/events/photo-credits";
 import { dateParts } from "@/components/events/format";
 import { balanceOf } from "@/lib/chain/contract";
 import { getServerSnapshot, getSnapshot, subscribe } from "@/lib/chain/store";
 import type { Ticket } from "@/lib/chain/types";
+import { readEventPhotos, type EventPhoto } from "@/lib/event-images";
+import { sectionOfId } from "@/lib/sections";
 import { ChainError } from "./chain-error";
 
 /** Today in the same UTC calendar the contract uses. */
@@ -25,6 +29,7 @@ export function MyTickets() {
 
   const { state, wallet, chain } = node;
   const now = today();
+  const photos = readEventPhotos();
   const mine = state.tickets.filter((t) => t.owner === wallet.address);
   const isPast = (t: Ticket) => t.event.date !== null && t.event.date < now;
   const byDate = (a: Ticket, b: Ticket) => (a.event.date ?? "9999").localeCompare(b.event.date ?? "9999") || a.serial - b.serial;
@@ -57,8 +62,8 @@ export function MyTickets() {
         </div>
       ) : (
         <>
-          <TicketList title="Upcoming" tickets={upcoming} />
-          <TicketList title="Past" tickets={past} />
+          <TicketList title="Upcoming" tickets={upcoming} photos={photos} />
+          <TicketList title="Past" tickets={past} photos={photos} />
         </>
       )}
     </div>
@@ -74,7 +79,7 @@ function Stat({ label, value, mono = false }: { label: string; value: string; mo
   );
 }
 
-function TicketList({ title, tickets }: { title: string; tickets: Ticket[] }) {
+function TicketList({ title, tickets, photos }: { title: string; tickets: Ticket[]; photos: Record<string, EventPhoto | undefined> }) {
   if (tickets.length === 0) return null;
   return (
     <section>
@@ -83,36 +88,43 @@ function TicketList({ title, tickets }: { title: string; tickets: Ticket[] }) {
       </h2>
       <ul className="grid gap-5 lg:grid-cols-2">
         {tickets.map((t) => (
-          <TicketCard key={t.id} ticket={t} />
+          <TicketCard key={t.id} ticket={t} photo={photos[t.event.id]} />
         ))}
       </ul>
     </section>
   );
 }
 
-function TicketCard({ ticket }: { ticket: Ticket }) {
-  const d = dateParts(ticket.event.date);
+function TicketCard({ ticket, photo }: { ticket: Ticket; photo: EventPhoto | undefined }) {
+  const { event } = ticket;
+  const d = dateParts(event.date);
   return (
-    <li className="flex overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200">
-      <div className="flex w-24 shrink-0 flex-col items-center justify-center bg-[#024bde] p-3 text-center text-white">
-        {d ? (
-          <>
-            <span className="text-sm font-bold uppercase">{d.month}</span>
-            <span className="text-4xl font-black leading-none">{d.day}</span>
-            <span className="mt-1 text-sm">{d.year}</span>
-          </>
-        ) : (
-          <span className="font-bold">TBA</span>
-        )}
+    <li className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200">
+      <div className="relative h-44">
+        <EventImage
+          event={{ id: event.id, name: event.name, section: sectionOfId(event.id), image: photo?.src ?? null }}
+          sizes="(max-width: 1024px) 100vw, 50vw"
+        />
+        <div className="absolute bottom-4 left-4 w-20 rounded-md bg-white p-2 text-center shadow">
+          {d ? (
+            <>
+              <span className="block text-sm font-bold uppercase text-[#024bde]">{d.month}</span>
+              <span className="block text-3xl font-black leading-none">{d.day}</span>
+              <span className="mt-1 block text-sm text-zinc-600">{d.year}</span>
+            </>
+          ) : (
+            <span className="font-bold">TBA</span>
+          )}
+        </div>
       </div>
-      <div className="min-w-0 flex-1 p-5">
+      <div className="p-5">
         <h3 className="text-lg font-bold">
           {/* No prefetch: event pages call rate-limited APIs. */}
-          <Link href={`/events/${ticket.event.id}`} prefetch={false} className="hover:underline">
-            {ticket.event.name}
+          <Link href={`/events/${event.id}`} prefetch={false} className="hover:underline">
+            {event.name}
           </Link>
         </h3>
-        <p className="text-zinc-600">{ticket.event.venue ?? "Venue TBA"}</p>
+        <p className="text-zinc-600">{event.venue ?? "Venue TBA"}</p>
         <p className="mt-3 text-sm font-bold">
           Ticket #{ticket.serial} · Block #{ticket.blockIndex}
         </p>
@@ -129,6 +141,11 @@ function TicketCard({ ticket }: { ticket: Ticket }) {
             </div>
           </dl>
         </details>
+        {photo && (
+          <p className="mt-3 text-xs text-zinc-500">
+            <PhotoCredit credit={photo.credit} />
+          </p>
+        )}
       </div>
     </li>
   );

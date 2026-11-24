@@ -3,8 +3,7 @@ import Form from "next/form";
 /**
  * Search bar: location · date · keyword · Search button.
  *
- * Submits as a GET to `/search`. Field names match the Ticketmaster
- * Discovery API params, so the search page can forward them directly:
+ * Submits as a GET to `/search`. For example:
  *   /search?city=London&startDate=2026-12-01&keyword=coldplay
  */
 export function SearchBar({ action = "/search" }: { action?: string }) {
@@ -15,13 +14,13 @@ export function SearchBar({ action = "/search" }: { action?: string }) {
       className="flex w-full flex-col overflow-hidden rounded-md bg-white text-[#121212] shadow-lg md:flex-row md:items-stretch"
     >
       <Field label="Location" icon={<PinIcon />} className="md:w-56">
-        <input name="city" placeholder="City or zip code" autoComplete="address-level2" className={inputClass} />
+        <input name="city" placeholder="City or country" autoComplete="address-level2" className={inputClass} />
       </Field>
 
       <Divider />
 
-      <Field label="Dates" icon={<CalendarIcon />} className="md:w-52">
-        <input name="startDate" type="date" aria-label="Start date" className={inputClass} />
+      <Field label="From date" icon={<CalendarIcon />} className="md:w-52">
+        <input name="startDate" type="date" aria-label="From date" className={inputClass} />
       </Field>
 
       <Divider />

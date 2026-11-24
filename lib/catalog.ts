@@ -33,7 +33,8 @@ async function loadEvents(section: SectionSlug): Promise<EventList> {
   "use cache";
   try {
     const page = await LIVE_SOURCES[section]!(LIST_SIZE);
-    cacheLife("hours");
+    if (page.incomplete) cacheLife("minutes");
+    else cacheLife("hours");
     return { ...page, source: "live" };
   } catch (e) {
     console.warn(`Live ${section} unavailable, using sample data:`, e instanceof Error ? e.message : e);
@@ -57,8 +58,17 @@ export async function getEvent(id: string): Promise<EventDetail> {
 async function loadEvent(id: string): Promise<EventDetail> {
   "use cache";
   try {
-    const event = SPORT_ID.test(id) ? await fetchGame(id.slice("sport-".length)) : await fetchConcert(id);
-    cacheLife("hours");
+    let event: EventItem | null;
+    let incomplete = false;
+    if (SPORT_ID.test(id)) {
+      event = await fetchGame(id.slice("sport-".length));
+    } else {
+      const concert = await fetchConcert(id);
+      event = concert?.event ?? null;
+      incomplete = concert?.incomplete ?? false;
+    }
+    if (incomplete) cacheLife("minutes");
+    else cacheLife("hours");
     return event ? { status: "ok", event } : { status: "not_found" };
   } catch (e) {
     console.warn("Event unavailable:", e instanceof Error ? e.message : e);

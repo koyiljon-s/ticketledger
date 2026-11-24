@@ -3,6 +3,9 @@ import type { SectionSlug } from "./sections";
 
 export type EventProvider = "musicbrainz" | "thesportsdb" | "ticketmaster" | "sample";
 
+/** Author and licence of a photo, which must be shown with it. */
+export type ImageCredit = { author: string; license: string; licenseUrl: string | null; sourceUrl: string };
+
 export type EventItem = {
   id: string;
   provider: EventProvider;
@@ -11,6 +14,7 @@ export type EventItem = {
   /** The provider's page for this event; null for fictional sample events. */
   url: string | null;
   image: string | null;
+  imageCredit?: ImageCredit;
   /** "YYYY-MM-DD", or null when the date is TBA. */
   localDate: string | null;
   /** "HH:mm", or null when the time is TBA. */
@@ -30,4 +34,4 @@ export type EventItem = {
   moreDates?: number;
 };
 
-export type EventPage = { events: EventItem[]; totalElements: number };
+export type EventPage = { events: EventItem[]; totalElements: number; /** Optional extras (photos) failed to load: try again soon. */ incomplete?: boolean };

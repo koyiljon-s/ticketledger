@@ -38,6 +38,9 @@ export function EventRow({ event }: { event: EventItem }) {
             +{event.moreDates} more {event.moreDates === 1 ? "date" : "dates"} this week
           </p>
         )}
+        {event.provider === "sample" && (
+          <span className="mt-1 mr-2 inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-bold uppercase text-amber-900">Sample</span>
+        )}
         {cancelled && <span className="mt-1 inline-block rounded bg-red-100 px-2 py-0.5 text-xs font-bold uppercase text-red-700">Cancelled</span>}
       </div>
 

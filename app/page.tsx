@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EventCard } from "@/components/events/event-card";
 import { pickFeatured } from "@/components/events/featured";
+import { PhotoCredits } from "@/components/events/photo-credits";
 import { SampleDataBanner } from "@/components/events/sample-data-banner";
 import { DIFFICULTY } from "@/lib/chain/blockchain";
 import { MAX_PER_WALLET, START_BALANCE, SUPPLY_PER_EVENT, TICKET_PRICE } from "@/lib/chain/contract";
@@ -76,6 +77,7 @@ export default async function Home() {
                 <EventCard key={e.id} event={e} />
               ))}
             </div>
+            <PhotoCredits events={featured} />
           </section>
         )}
 
