@@ -12,6 +12,7 @@
 import { cacheLife } from "next/cache";
 import type { EventItem, EventPage } from "./events";
 import { searchSampleEvents } from "./sample-events";
+import type { SectionSlug } from "./sections";
 
 const BASE_URL = "https://app.ticketmaster.com/discovery/v2";
 
@@ -61,7 +62,7 @@ class TicketmasterError extends Error {
 /** Searches events. Never throws: failures come back as `{ ok: false }`. */
 export async function searchEvents(search: TmSearch): Promise<TmResult> {
   if (getDataSource() === "sample") {
-    return { ok: true, source: "sample", data: searchSampleEvents(search) };
+    return { ok: true, source: "sample", data: searchSampleEvents({ ...search, section: sectionOf(search) }) };
   }
   try {
     // Only successful responses reach the cache: errors are thrown inside and caught here.
@@ -100,14 +101,21 @@ async function fetchEvents(search: TmSearch): Promise<EventPage> {
 
   const json = (await res.json()) as RawResponse;
   return {
-    events: (json._embedded?.events ?? []).map(normalizeEvent),
+    events: (json._embedded?.events ?? []).map((e) => normalizeEvent(e, sectionOf(search))),
     totalElements: json.page?.totalElements ?? 0,
   };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function normalizeEvent(e: RawEvent): EventItem {
+const SEGMENT_SECTIONS: Record<string, SectionSlug> = { Music: "concerts", Sports: "sports", "Arts & Theatre": "arts-theater", Film: "film" };
+
+function sectionOf(search: TmSearch): SectionSlug {
+  if (search.classificationName === "Family") return "family";
+  return SEGMENT_SECTIONS[search.segmentName ?? ""] ?? "concerts";
+}
+
+function normalizeEvent(e: RawEvent, section: SectionSlug): EventItem {
   const venue = e._embedded?.venues?.[0];
   const cls = e.classifications?.find((c) => c.primary) ?? e.classifications?.[0];
   const price = e.priceRanges?.[0];
@@ -115,6 +123,7 @@ function normalizeEvent(e: RawEvent): EventItem {
   return {
     id: e.id,
     provider: "ticketmaster",
+    section,
     name: e.name,
     url: e.url ?? null,
     image: pickImage(e.images),

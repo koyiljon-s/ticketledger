@@ -101,6 +101,7 @@ function normalize(e: RawEvent, moreDates: number, cities: Map<string, string>):
   return {
     id: e.id,
     provider: "musicbrainz",
+    section: "concerts",
     name: e.name,
     url: `https://musicbrainz.org/event/${e.id}`,
     image: null,

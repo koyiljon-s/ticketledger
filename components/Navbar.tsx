@@ -1,19 +1,8 @@
 import Link from "next/link";
+import { SECTIONS } from "@/lib/sections";
 import { SearchBar } from "./ui/search-bar";
 
 export const BRAND = "TicketLedger";
-
-/**
- * The 5 main sections. `segment` / `classification` are the matching
- * Ticketmaster Discovery API filters, for use when the section pages are built.
- */
-export const SECTIONS = [
-  { label: "Concerts", href: "/discover/concerts", segment: "Music" },
-  { label: "Sports", href: "/discover/sports", segment: "Sports" },
-  { label: "Arts & Theater", href: "/discover/arts-theater", segment: "Arts & Theatre" },
-  { label: "Family", href: "/discover/family", classification: "Family" },
-  { label: "Film", href: "/discover/film", segment: "Film" },
-] as const;
 
 export function Navbar() {
   return (

@@ -15,12 +15,12 @@ export function dateParts(localDate: string | null) {
   return { year: y, month: MONTHS[mo - 1], day: d, weekday };
 }
 
-/** "19:30" → "7:30 PM" */
-export function formatTime(localTime: string | null) {
+/** "19:30" → "7:30 PM", with the zone appended if given */
+export function formatTime(localTime: string | null, timeZone?: string) {
   const m = localTime?.match(/^(\d{2}):(\d{2})/);
   if (!m) return null;
   const h = Number(m[1]);
-  return `${h % 12 || 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? "AM" : "PM"}${timeZone ? ` ${timeZone}` : ""}`;
 }
 
 export function formatPlace(e: Pick<EventItem, "city" | "state" | "country">) {

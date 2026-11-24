@@ -42,12 +42,22 @@ export async function signTx(wallet: Wallet, body: MintBody): Promise<Tx> {
   return { body, signature, hash: await sha256(text) };
 }
 
-async function isTxAuthentic(tx: Tx): Promise<boolean> {
+async function inspectTx(tx: Tx): Promise<string[]> {
+  const problems: string[] = [];
   const text = serialize(tx.body);
-  if ((await sha256(text)) !== tx.hash) return false;
-  if ((await addressOf(tx.body.publicKey)) !== tx.body.from) return false;
-  const key = await crypto.subtle.importKey("raw", fromBase64(tx.body.publicKey), KEY_ALGO, false, ["verify"]);
-  return crypto.subtle.verify(SIGN_ALGO, key, fromBase64(tx.signature), encode(text));
+  if ((await sha256(text)) !== tx.hash) problems.push("Transaction hash doesn't match the ticket's data.");
+  if ((await addressOf(tx.body.publicKey)) !== tx.body.from) problems.push("Public key doesn't belong to the owner's address.");
+  if (!(await verifySignature(tx, text))) problems.push("Invalid signature: the owner never signed this data.");
+  return problems;
+}
+
+async function verifySignature(tx: Tx, text: string): Promise<boolean> {
+  try {
+    const key = await crypto.subtle.importKey("raw", fromBase64(tx.body.publicKey), KEY_ALGO, false, ["verify"]);
+    return await crypto.subtle.verify(SIGN_ALGO, key, fromBase64(tx.signature), encode(text));
+  } catch {
+    return false; // malformed key or signature
+  }
 }
 
 // ── Blocks ──────────────────────────────────────────────────────────────────
@@ -65,21 +75,59 @@ export async function mineBlock(prev: Block | null, txs: Tx[]): Promise<Block> {
   }
 }
 
-/** Replays the whole chain. Returns its state, or throws if anything was tampered with. */
-export async function validateChain(chain: Block[]): Promise<WorldState> {
+export type BlockReport = { index: number; problems: string[] };
+
+/** Checks every block and lists everything wrong with it, continuing past failures. */
+export async function inspectChain(chain: Block[]): Promise<{ reports: BlockReport[]; state: WorldState }> {
+  const reports: BlockReport[] = [];
   let state = emptyState();
   for (const [i, block] of chain.entries()) {
-    const ok =
-      block.index === i &&
-      block.difficulty === DIFFICULTY &&
-      block.prevHash === (i === 0 ? GENESIS_PREV : chain[i - 1].hash) &&
-      block.hash === (await hashBlock(block)) &&
-      block.hash.startsWith("0".repeat(DIFFICULTY));
-    if (!ok) throw new Error(`Block #${i} is invalid.`);
+    const problems: string[] = [];
+    if (block.index !== i) problems.push("Wrong block number.");
+    if (block.prevHash !== (i === 0 ? GENESIS_PREV : chain[i - 1].hash)) problems.push("Broken link: previous hash doesn't match the block before it.");
+    if (block.hash !== (await hashBlock(block))) problems.push("Block hash doesn't match the block's contents.");
+    if (block.difficulty !== DIFFICULTY || !block.hash.startsWith("0".repeat(DIFFICULTY))) problems.push("Not enough proof-of-work.");
     for (const tx of block.txs) {
-      if (!(await isTxAuthentic(tx))) throw new Error(`Block #${i} contains a forged transaction.`);
-      state = applyTx(state, tx, i);
+      problems.push(...(await inspectTx(tx)));
+      try {
+        state = applyTx(state, tx, i);
+      } catch (e) {
+        problems.push(`Contract rule broken: ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
+    reports.push({ index: i, problems });
   }
+  return { reports, state };
+}
+
+/** Replays the whole chain. Returns its state, or throws if anything was tampered with. */
+export async function validateChain(chain: Block[]): Promise<WorldState> {
+  const { reports, state } = await inspectChain(chain);
+  const bad = reports.find((r) => r.problems.length > 0);
+  if (bad) throw new Error(`Block #${bad.index} is invalid. ${bad.problems[0]}`);
   return state;
+}
+
+// ── Attack simulation (block explorer only; never saved) ────────────────────
+
+/** Replaces `chain[index]`'s first transaction's event name, leaving hashes and signature as they were. */
+export function editEventName(chain: Block[], index: number, name: string): Block[] {
+  return chain.map((b, i) => {
+    if (i !== index) return b;
+    const [tx, ...rest] = b.txs;
+    return { ...b, txs: [{ ...tx, body: { ...tx.body, event: { ...tx.body.event, name } } }, ...rest] };
+  });
+}
+
+/** Recalculates transaction hashes. The signature can't be recalculated without the owner's private key. */
+export async function rehashTxs(chain: Block[], index: number): Promise<Block[]> {
+  const txs = await Promise.all(chain[index].txs.map(async (tx) => ({ ...tx, hash: await sha256(serialize(tx.body)) })));
+  return chain.map((b, i) => (i === index ? { ...b, txs } : b));
+}
+
+/** Redoes the proof-of-work for blocks `from` to `to` (inclusive). */
+export async function remine(chain: Block[], from: number, to: number): Promise<Block[]> {
+  const next = [...chain];
+  for (let i = from; i <= to; i++) next[i] = await mineBlock(i === 0 ? null : next[i - 1], next[i].txs);
+  return next;
 }

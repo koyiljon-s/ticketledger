@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { BRAND, SECTIONS } from "./Navbar";
+import { SECTIONS } from "@/lib/sections";
+import { BRAND } from "./Navbar";
 
 export function Footer() {
   return (
@@ -41,6 +42,11 @@ export function Footer() {
                 My Tickets
               </Link>
             </li>
+            <li>
+              <Link href="/explorer" className="transition hover:text-white">
+                Block Explorer
+              </Link>
+            </li>
           </ul>
         </nav>
 
@@ -51,7 +57,11 @@ export function Footer() {
             <a href="https://musicbrainz.org/" target="_blank" rel="noreferrer" className="underline transition hover:text-white">
               MusicBrainz
             </a>{" "}
-            database. This project is not affiliated with or endorsed by MusicBrainz, the artists or the venues. Events marked as sample data are
+            database and sports information from{" "}
+            <a href="https://www.thesportsdb.com/" target="_blank" rel="noreferrer" className="underline transition hover:text-white">
+              TheSportsDB
+            </a>
+            . This project is not affiliated with or endorsed by them, the artists, the teams or the venues. Events marked as sample data are
             fictional.
           </p>
         </div>

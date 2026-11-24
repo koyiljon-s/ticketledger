@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { EventItem } from "@/lib/events";
+import type { SectionSlug } from "@/lib/sections";
 
 const GENRE_GRADIENTS: Record<string, string> = {
   Pop: "from-pink-500 to-fuchsia-700",
@@ -12,6 +13,20 @@ const GENRE_GRADIENTS: Record<string, string> = {
   Jazz: "from-sky-700 to-slate-900",
   Latin: "from-rose-500 to-orange-600",
   Classical: "from-stone-500 to-stone-800",
+};
+
+const ICONS: Record<SectionSlug, React.ReactNode> = {
+  concerts: (
+    <>
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </>
+  ),
+  sports: <path d="M7 4h10v5a5 5 0 0 1-10 0zM7 5H3v2a4 4 0 0 0 4 4M17 5h4v2a4 4 0 0 1-4 4M12 14v6M8 20h8" />,
+  "arts-theater": <path d="M4 4h16v7a8 8 0 0 1-16 0zM8 9h2M14 9h2M8 14c2 2 6 2 8 0" />,
+  family: <path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" />,
+  film: <path d="M3 5h18v14H3zM7 5v14M17 5v14M3 9.7h4M3 14.3h4M17 9.7h4M17 14.3h4" />,
 };
 
 const GRADIENTS = Object.values(GENRE_GRADIENTS);
@@ -38,9 +53,7 @@ export function EventImage({ event, sizes, className = "" }: { event: EventItem;
   return (
     <div aria-hidden className={`absolute inset-0 grid place-items-center bg-gradient-to-br ${gradient} ${className}`}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-1/3 w-1/3 text-white/40">
-        <path d="M9 18V5l12-2v13" />
-        <circle cx="6" cy="18" r="3" />
-        <circle cx="18" cy="16" r="3" />
+        {ICONS[event.section]}
       </svg>
     </div>
   );

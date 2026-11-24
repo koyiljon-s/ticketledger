@@ -5,7 +5,8 @@ import { Suspense } from "react";
 import { EventImage } from "@/components/events/event-image";
 import { dateParts, formatPlace, formatTime } from "@/components/events/format";
 import { TicketPanel } from "@/components/events/ticket-panel";
-import { getConcert } from "@/lib/concerts";
+import { getEvent } from "@/lib/catalog";
+import { getSection } from "@/lib/sections";
 
 export const metadata: Metadata = { title: "Event · TicketLedger" };
 
@@ -22,15 +23,15 @@ export default function EventPage({ params }: PageProps<"/events/[id]">) {
 }
 
 async function EventDetail({ id }: { id: string }) {
-  const result = await getConcert(id);
+  const result = await getEvent(id);
   if (result.status === "not_found") notFound();
   if (result.status === "unavailable") {
     return (
       <div className="mx-auto max-w-384 px-5 py-20">
         <h1 className="text-2xl font-black">Couldn&apos;t load this event</h1>
-        <p className="mt-2 text-zinc-600">MusicBrainz is busy or unreachable. Please try again in about a minute.</p>
-        <Link href="/discover/concerts" className="mt-4 inline-block font-bold text-[#024bde] underline">
-          Back to concerts
+        <p className="mt-2 text-zinc-600">The event source is busy or unreachable. Please try again in about a minute.</p>
+        <Link href="/" className="mt-4 inline-block font-bold text-[#024bde] underline">
+          Back to home
         </Link>
       </div>
     );
@@ -38,9 +39,10 @@ async function EventDetail({ id }: { id: string }) {
 
   const { event } = result;
   const d = dateParts(event.localDate);
-  const when = [d ? `${d.weekday}, ${d.month} ${d.day}, ${d.year}` : "Date TBA", formatTime(event.localTime)].filter(Boolean).join(" · ");
+  const when = [d ? `${d.weekday}, ${d.month} ${d.day}, ${d.year}` : "Date TBA", formatTime(event.localTime, event.timeZone)].filter(Boolean).join(" · ");
   const where = [event.venue, formatPlace(event)].filter(Boolean).join(" · ");
-  const cancelled = event.status === "cancelled";
+  const off = event.status === "cancelled" || event.status === "postponed" ? event.status : null;
+  const section = getSection(event.section);
 
   return (
     <>
@@ -51,15 +53,15 @@ async function EventDetail({ id }: { id: string }) {
           </div>
           <div>
             <nav aria-label="Breadcrumb" className="text-sm text-white/60">
-              <Link href="/discover/concerts" className="hover:text-white hover:underline">
-                Concerts
+              <Link href={section.href} className="hover:text-white hover:underline">
+                {section.label}
               </Link>{" "}
               / <span className="text-white">Event</span>
             </nav>
             <h1 className="mt-3 text-3xl font-black md:text-4xl">{event.name}</h1>
             <p className="mt-3 text-lg text-white/85">{when}</p>
             <p className="text-lg text-white/85">{where || "Venue TBA"}</p>
-            {cancelled && <span className="mt-3 inline-block rounded bg-red-600 px-2 py-1 text-sm font-bold uppercase">Cancelled</span>}
+            {off && <span className="mt-3 inline-block rounded bg-red-600 px-2 py-1 text-sm font-bold uppercase">{off}</span>}
           </div>
         </div>
       </section>
@@ -78,7 +80,7 @@ async function EventDetail({ id }: { id: string }) {
               <>
                 Event data from{" "}
                 <a href={event.url} target="_blank" rel="noreferrer" className="underline">
-                  MusicBrainz
+                  {event.provider === "thesportsdb" ? "TheSportsDB" : "MusicBrainz"}
                 </a>
                 , maintained by volunteers. The organizer is not involved in this demo.
               </>
@@ -87,7 +89,7 @@ async function EventDetail({ id }: { id: string }) {
             )}
           </p>
         </section>
-        <TicketPanel event={{ id: event.id, name: event.name, date: event.localDate, venue: event.venue }} cancelled={cancelled} />
+        <TicketPanel event={{ id: event.id, name: event.name, date: event.localDate, venue: event.venue }} notice={off && `This event was ${off}.`} />
       </div>
     </>
   );

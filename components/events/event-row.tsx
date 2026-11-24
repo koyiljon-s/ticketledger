@@ -6,7 +6,7 @@ import { dateParts, formatPlace, formatPrice, formatTime } from "./format";
 /** List row: date block · thumbnail · details · price · link. */
 export function EventRow({ event }: { event: EventItem }) {
   const d = dateParts(event.localDate);
-  const time = formatTime(event.localTime);
+  const time = formatTime(event.localTime, event.timeZone);
   const price = formatPrice(event);
   const cancelled = event.status === "cancelled" || event.status === "canceled";
 
@@ -48,7 +48,7 @@ export function EventRow({ event }: { event: EventItem }) {
         </div>
       )}
 
-      {/* No prefetch: each event page calls MusicBrainz, which allows about 1 request/second. */}
+      {/* No prefetch: each event page calls a rate-limited API. */}
       <Link
         href={`/events/${event.id}`}
         prefetch={false}

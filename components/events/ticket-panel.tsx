@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
+import { ChainError } from "@/components/tickets/chain-error";
 import { balanceOf, MAX_PER_WALLET, SUPPLY_PER_EVENT, TICKET_PRICE } from "@/lib/chain/contract";
-import { getServerSnapshot, getSnapshot, mintTicket, resetChain, subscribe } from "@/lib/chain/store";
+import { getServerSnapshot, getSnapshot, mintTicket, subscribe } from "@/lib/chain/store";
 import type { MintBody } from "@/lib/chain/types";
 
 const short = (s: string) => `${s.slice(0, 10)}…${s.slice(-6)}`;
 
-export function TicketPanel({ event, cancelled }: { event: MintBody["event"]; cancelled: boolean }) {
+export function TicketPanel({ event, notice }: { event: MintBody["event"]; /** Why tickets are off, e.g. cancelled. */ notice: string | null }) {
   const node = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [mining, setMining] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,17 +31,7 @@ export function TicketPanel({ event, cancelled }: { event: MintBody["event"]; ca
   if (node.status === "error") {
     return (
       <Panel>
-        <p role="alert" className="font-bold text-red-700">
-          {node.message}
-        </p>
-        <button
-          className="mt-4 rounded-md border border-zinc-300 px-4 py-2 text-sm font-bold"
-          onClick={() => {
-            if (confirm("Start a new demo blockchain? All demo tickets in this browser will be lost.")) void resetChain();
-          }}
-        >
-          Reset demo blockchain
-        </button>
+        <ChainError message={node.message} />
       </Panel>
     );
   }
@@ -48,8 +40,8 @@ export function TicketPanel({ event, cancelled }: { event: MintBody["event"]; ca
   const sold = state.tickets.filter((t) => t.event.id === event.id);
   const mine = sold.filter((t) => t.owner === wallet.address);
   const balance = balanceOf(state, wallet.address);
-  const blocked = cancelled
-    ? "This event was cancelled."
+  const blocked = notice
+    ? notice
     : sold.length >= SUPPLY_PER_EVENT
       ? "Sold out."
       : mine.length >= MAX_PER_WALLET
@@ -104,6 +96,9 @@ export function TicketPanel({ event, cancelled }: { event: MintBody["event"]; ca
               </li>
             ))}
           </ul>
+          <Link href="/my-tickets" className="mt-3 inline-block text-sm font-bold text-[#024bde] underline">
+            See all in My Tickets
+          </Link>
         </div>
       )}
     </Panel>
